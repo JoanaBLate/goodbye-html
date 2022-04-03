@@ -87,9 +87,7 @@ function main() {
 
 function applyHead() {
     //
-    consolidation  = "// # Copyright (c) 2022 Feudal Code Limitada #\n\n"
-    //
-    consolidation += Deno.readTextFileSync("source/README.js")
+    consolidation  = Deno.readTextFileSync("source/README.js")
     //
     consolidation +=  Deno.readTextFileSync("source/LIBRARY.js")
 }
