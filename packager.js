@@ -22,9 +22,6 @@
 */ 
 
 
-"use strict"
-
-
 /*
 
     This file is supposed to be run with Deno.
@@ -38,6 +35,9 @@
 
 */
 
+
+
+"use strict"
 
 
 var consolidation = ""
