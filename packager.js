@@ -29,7 +29,8 @@
 
     This file is supposed to be run with Deno.
 
-
+    WARNING: THIS WRITES FILE ON YOUR CURRENT WORKING DIRECTORY
+    
     It packages the source files of the GoodbyeHtml library into a 
     
     single file called goodbye.js in your current working directory.
