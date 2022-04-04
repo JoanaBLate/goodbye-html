@@ -15,6 +15,8 @@ Warning: the library is still under construction.
 
 Warning2: the source code must be packaged.
 
+Here you can experiment a partial demo https://bobsprite.com/mosaic-partial-demo
+
 
 More info at https://javascript.plainenglish.io/goodbye-html-hello-canvas-part-1-92f750961666
 
