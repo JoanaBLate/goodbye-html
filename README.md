@@ -4,9 +4,11 @@ A library for a one canvas based web page
 -----------------------------------------
 
 
-With GoodbyeHtml you may easily create a full HTML page (or part(s) of it).
+With GoodbyeHtml you may easily create a full HTML page (or part(s) of it), using only one canvas.
  
 A great advantage of this approach is that the final result is 100% under your control on any browser and device.
+
+This system has good performance and consumes little memory.
 
 The library is very careful about avoiding developer mistakes and about clearly messaging the mistakes.
 
