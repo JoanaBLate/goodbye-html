@@ -1,7 +1,7 @@
-// MIT License
 
 // # Copyright (c) 2022 Feudal Code Limitada #
 
+// MIT License
   
 /*   
  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -42,46 +42,28 @@
  *
 */
 
-"use strict"    
 
-///////////////////////////////////////////////////////////////////////////////
+
+"use strict"
 
 function createGoodbyeHtmlLibrary() {
-    //
-    let resourcesToLoad = 0
-    //
-    const allImages = { }
-    //
-    const allFonts = { }
-    //
-    //
-    const lib = {
-        //
-        "allFonts": allFonts,
-        "allImages": allImages,
-        "createLoader": createLoader,
-        //        
-        "cloneImage": cloneImageUser,
-        "createCanvas": createColorCanvasUser,
-        "fadeImage": fadeImageUser,
-        "createCheckerboard": createCheckerboardUser,
-        "negativeFromImage": negativeFromImageUser,
-        "createLabel": createLabelUser,
-        "calcTextLength": calcTextLengthUser,
-        //
-        "createBox": createBox
-    }
-    //
-    Object.freeze(lib)
-    return lib
 
-// ############################################################################
-// ############################################################################
-// ############################################################################
 
+
+
+
+// [[source/globals.js]] ######################################################
+
+
+const allImages = { }
+
+const allFonts = { }
+
+let resourcesToLoad = 0
 
 
 // [[source/assure.js]] #######################################################
+
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -211,6 +193,37 @@ function assureSolidColor(param, func, val) {
 
 ///////////////////////////////////////////////////////////////////////////////
 
+function assureName(param, func, val) {
+    //
+    if (typeof val != "string") { argError(param, func, "expecting name, got: " + val) }
+    //
+    if (val == "") { argError(param, func, "expecting name, got empty string") }
+    //
+    if (val != val.toLowerCase()) {
+        //
+        argError(param, func, "upper case letter(s) in name: " + val)
+    }
+    //
+    if (val[0] < "a" || val[0] > "z") {
+        //
+        argError(param, func, "name not starting with letter: " + val)
+    }
+    //
+    for (const c of val) {
+        //
+        if (c >= "a"  &&  c <= "z") { continue }
+        if (c >= "0"  &&  c <= "9") { continue }
+        if (c != "-") {
+            //
+            argError(param, func, "invalid character '" + c + "' in name: " + val)
+        }
+    }
+    //
+    return val
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
 function assureGoodId(param, func, val, dict) {
     //
     if (typeof val != "string") { argError(param, func, "expecting string, got: " + val) }
@@ -233,6 +246,7 @@ function assureFreeId(param, func, val, dict) {
 
 
 // [[source/box.js]] ##########################################################
+
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -257,9 +271,10 @@ function Box(width, height, parent) {
     //
     this.stage = null
     this.stageCtx = null
+    //
     this.layers = [ ]
-    this.panels = [ ]
-    this.widgets = [ ]
+    //
+    this.elements = { }
     //
     this.focusedWidget = null
     this.lastWidgetUnderMouse = null
@@ -276,9 +291,10 @@ function createBox(width, height, parent) {
     //
     assureMinimumInteger("height", "createBox", height, 30)
     //
-    if (parent.appendChild == undefined) { throw("-- invalid parent for the box: missing appendChild") }
+    if (parent.appendChild == undefined) { throw "-- invalid parent for the box: missing appendChild" }
     //
     const box = new Box(width, height, parent)
+    Object.seal(box)
     //
     createStage(box)
     //
@@ -293,28 +309,43 @@ function createBoxUser(box) {
     //
     boxUser["setBgColor"] = function (color) { setStageBgColor(box, color) }
     //
-    boxUser["initLayers"] = function (ids) { initLayers(box, ids) }
+    boxUser["initLayers"] = function (names) { initLayers(box, names) }
     //
-    boxUser["exchangeLayers"] = function (ids) { exchangeLayers(box, ids) }
+    boxUser["get"] = function (id) { return getUser(box, id) }
     //
-    boxUser["getLayer"] = function (id) { return getLayerUser(box, id) }
+    boxUser["log"] = function () { console.log(box) }
     //
     Object.freeze(boxUser)
     //
     return boxUser
 }
 
+///////////////////////////////////////////////////////////////////////////////
+
+function getUser(box, id) {
+    //
+    assureString("id", "box.get", id)
+    //
+    const element = box.elements[id]
+    //
+    if (element == undefined) { throw "no element matches this id: " + id }
+    //
+    return element
+}
+
 
 // [[source/button.js]] #######################################################
 
+
 ///////////////////////////////////////////////////////////////////////////////
 
-function Button(panel, left, top, width, height, bgColor) { // , fontId, text) {
+function Button(panel, id, left, top, width, height, bgColor) {
     //
-    this.id = panel.widgets.length + 1
+    this.panel = panel
     //
     this.kind = "button"
-    this.panel = panel
+    //
+    this.id = id
     //
     this.left = left
     this.top = top
@@ -344,9 +375,19 @@ function Button(panel, left, top, width, height, bgColor) { // , fontId, text) {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-function createButton(panel, left, top, width, height, bgColor) { // , fontId, text) {
+function createButton(panel, name, left, top, width, height, bgColor) {
+    //
+    const box = panel.layer.box
+    //
+    box.shallRepaint = true
     //
     const func = "panel.createButton"
+    //
+    assureName("name", func, name)
+    //
+    const id = panel.id + "." + name
+    //
+    assureFreeId("name", func, id, box.elements)
     //
     assureMinimumInteger("left", func, left, 0)
     //
@@ -359,12 +400,8 @@ function createButton(panel, left, top, width, height, bgColor) { // , fontId, t
     if (bgColor === null) { bgColor = "transparent" }
     //
     assureColor("bgColor", func, bgColor)
-    /*/
-    assureGoodId("fontId", func, fontId, allFonts)
     //
-    assureString("text", func, text)
-    /*/
-    const button = new Button(panel, left, top, width, height, bgColor) // , fontId, text)
+    const button = new Button(panel, id, left, top, width, height, bgColor)
     //
     Object.seal(button)
     //
@@ -373,39 +410,40 @@ function createButton(panel, left, top, width, height, bgColor) { // , fontId, t
     //
     panel.widgets.push(button)
     //
+    box.elements[id] = createButtonUserObj(button)
+    //
     paintButton(button)
     //
-    return createButtonUser(button)
+    return box.elements[id]
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
-function createButtonUser(button) {
+function createButtonUserObj(button) {
     //
-    const obj = {
-        //
-        "hide": function () { hideButton(button) },
-        "show": function () { showButton(button) },
-        //
-        "setImageNormal": function (img) { setButtonImageNormal(button, img) },
-        "setImageActive": function (img) { setButtonImageActive(button, img) },
-        "setImagePressed": function (img) { setButtonImagePressed(button, img) },
-        "setImageDisabled": function (img) { setButtonImageDisabled(button, img) },
-        //
-        "disable": function () { button.state = "disabled"; paintButton(button); button.pressed = false },
-        "activate": function () { button.state = "active"; paintButton(button);  button.pressed = false },
-        "normalize": function () { button.state = "normal"; paintButton(button); button.pressed = false },
-        //
-        "setBgColor": function (color) { setButtonBgColor(button, color) },
-        //
-        "setOnClick": function (handler) { setButtonOnClick(button, handler) },
-        //
-        "setButtonText": function (fontId, text) { setButtonText(button, fontId, text) },
-        //
-        "visible": function () { return button.visible },
-        //
-        "log": function () { console.log(button) }
-    }
+    const obj = { }
+    //
+    obj["hide"] = function () { hideButton(button) }
+    obj["show"] = function () { showButton(button) }
+    //
+    obj["setImageNormal"] = function (img) { setButtonImageNormal(button, img) }
+    obj["setImageActive"] = function (img) { setButtonImageActive(button, img) }
+    obj["setImagePressed"] = function (img) { setButtonImagePressed(button, img) }
+    obj["setImageDisabled"] = function (img) { setButtonImageDisabled(button, img) }
+    //
+    obj["disable"] = function () { button.state = "disabled"; paintButton(button); button.pressed = false }
+    obj["activate"] = function () { button.state = "active"; paintButton(button);  button.pressed = false }
+    obj["normalize"] = function () { button.state = "normal"; paintButton(button); button.pressed = false }
+    //
+    obj["setBgColor"] = function (color) { setButtonBgColor(button, color) }
+    //
+    obj["setOnClick"] = function (handler) { setButtonOnClick(button, handler) }
+    //
+    obj["setButtonText"] = function (fontId, text) { setButtonText(button, fontId, text) }
+    //
+    obj["visible"] = function () { return button.visible }
+    //
+    obj["log"] = function () { console.log(button) }
     //
     Object.freeze(obj)
     return obj
@@ -542,6 +580,7 @@ function buttonOnMouseUp(button) {
 
 // [[source/button-text.js]] ##################################################
 
+
 ///////////////////////////////////////////////////////////////////////////////
 
 function setButtonText(__button, fontId, text) {
@@ -555,6 +594,7 @@ function setButtonText(__button, fontId, text) {
 
 
 // [[source/decoration.js]] ###################################################
+
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -655,6 +695,7 @@ function displayText(ctx, left, top, font, text) {
 
 
 // [[source/helper.js]] #######################################################
+
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -768,127 +809,85 @@ function solidReversedColor(color) {
 
 // [[source/layer.js]] ########################################################
 
+
 ///////////////////////////////////////////////////////////////////////////////
 
-function createLayer(id, box) {
+function Layer(box, id) {
     //
-    const layer = { "id": id, "box": box, "visible": true, "panels": [ ] }
+    this.box = box
+    //
+    this.id = id
+    //
+    this.visible = true
+    //
+    this.panels = [ ]
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+function createLayer(box, id) {
+    //
+    const layer = new Layer(box, id)
     //
     Object.seal(layer)
     //
-    return layer
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
-function getLayer(box, id) {
+    box.layers.push(layer)
     //
-    for (const layer of box.layers) {
-        //
-        if (layer.id == id) { return layer }
-    }
-    return null
-}
-
-function getLayerOrClash(box, id, func) {
-    //
-    const layer = getLayer(box, id)
-    //
-    if (layer != null) { return layer }
-    //
-    argError("id", func, "unknown layer: " + id)
+    box.elements[id] = createLayerUserObj(box, layer)
 }
 
 /////////////////////////////////////////////////////////////////////////////////
 
-function getLayerUser(box, id) {
+function createLayerUserObj(box, layer) {
     //
-    const layer = getLayerOrClash(box, id, "box.getLayer")
+    const obj = { }
     //
-    const obj = {
+    obj["id"] = layer.id
+    //
+    obj["show"] = function () { layer.visible = true; box.shallRepaint = true }
+    //
+    obj["hide"] = function () { layer.visible = false; box.shallRepaint = true }
+    //
+    obj["visible"] = function () { return layer.visible }
+    //
+    obj["createPanel"] = function (name, left, top, width, height, bgColor) {
         //
-        "id": layer.id,
-        //
-        "createPanel": function (left, top, width, height, bgColor) { return createPanel(layer, left, top, width, height, bgColor) },
-        //
-        "show": function () { layer.visible = true; box.shallRepaint = true },
-        //
-        "hide": function () { layer.visible = false; box.shallRepaint = true },
-        //
-        "visible": function () { return layer.visible },
-        //
-        "log": function () { console.log(layer) }
+        return createPanel(layer, name, left, top, width, height, bgColor)
     }
+    //
+    obj["log"] = function () { console.log(layer) }
     //
     Object.freeze(obj)
     return obj
 }
 
+
 /////////////////////////////////////////////////////////////////////////////////
 
-function initLayers(box, ids) {
+function initLayers(box, names) {
     //
-    const param = "ids"
-    const func = "box.createLayers"
+    const param = "names"
+    const func = "box.initLayers"
     //
     if (box.layers.length != 0) { throw("-- calling again function " + func) }
     //
-    assureNonEmptyList(param, func, ids)
+    assureNonEmptyList(param, func, names)
     //
-    for (const id of ids) {
+    for (const name of names) {
         //
-        if (typeof id != "string") { argError(param, func, "this item is not a string: " + id) }
+        if (typeof name != "string") { argError(param, func, "this item is not a string: " + name) }
         //
-        if (id === "") { argError(param, func, "empty string inside the list") }
+        if (name === "") { argError(param, func, "empty string inside the list") }
         //
-        if (getLayer(box, id) != null) { argError(param, func, "duplicated id: " + id) }
+        if (box.elements[name]) { argError(param, func, "duplicated id: " + name) }
         //
-        const layer = createLayer(id, box)
-        //
-        box.layers.push(layer)
+        createLayer(box, name)
     }
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
-function exchangeLayers(box, ids) {
-    //
-    box.shallRepaint = true
-    //
-    const param = "ids"
-    const func = "box.exchangeLayers"
-    //
-    assureList(param, func, ids)
-    //
-    if (ids.length != box.layers.length) {
-        //
-        argError(param, func, "expecting list with " + box.layers.length + " items, got: " + ids.length + " items")
-    }
-    //
-    const doneIds = [ ]
-    const layers = [ ]
-    //
-    for (const id of ids) {
-        //
-        if (typeof id != "string") { argError(param, func, "this item is not a string: " + id) }
-        //
-        if (id === "") { argError(param, func, "empty string inside the list") }
-        //
-        if (doneIds.includes(id)) { argError(param, func, "duplicated item: " + id) }
-        //
-        const layer = getLayer(box, id)
-        //
-        if (layer == null) { argError(param, func, "unknown virtual layer: " + id) }
-        //
-        doneIds.push(id)
-        layers.push(layer)
-    }
-    //
-    box.layers = layers
 }
 
 
 // [[source/loader.js]] #######################################################
+
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -909,7 +908,7 @@ function createLoader() {
 function setLoaderCallback(callback) {
     //
     if (typeof callback != "function") {
-        throw("-- wrong argument callback for function loader.ready, got: " + callback)
+        throw "-- wrong argument callback for function loader.ready, got: " + callback
     }
     //
     loaderDone(callback)
@@ -962,7 +961,7 @@ function loadFont(id, obj) {
     //
     if (typeof obj != "object") {
         //
-        throw("-- wrong argument obj for function loader.loadFont, got: " + id)
+        throw "-- wrong argument obj for function loader.loadFont, got: " + id
     }
     //
     assureNonEmptyString("object.src", "loader.loadFont", obj.src)
@@ -1010,8 +1009,8 @@ function createFont(id, sheet, reference) {
     //
     if (Math.floor(height) != height) {
         //
-        throw("-- the height of the source image for font " + id +
-             " divided by the number of the rows of the reference is not an integer")
+        throw "-- the height of the source image for font " + id +
+             " divided by the number of the rows of the reference is not an integer"
     }
     //
     let dict = { }
@@ -1103,6 +1102,7 @@ function createSpace(sample, R, G, B, A) {
 
 
 // [[source/mouse-handler.js]] ################################################
+
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -1229,6 +1229,7 @@ function stageOnMouseUp(box, e) {
 
 // [[source/mouse-helper.js]] #################################################
 
+
 ///////////////////////////////////////////////////////////////////////////////
 
 function isDragging(e) {
@@ -1341,13 +1342,14 @@ function tryOnMouseUp(widget, x, y) {
 
 // [[source/panel.js]] ########################################################
 
+
 ///////////////////////////////////////////////////////////////////////////////
 
-function Panel(layer, left, top, width, height, bgColor) {
-    //
-    this.id = layer.panels.length + 1
+function Panel(layer, id, left, top, width, height, bgColor) {
     //
     this.layer = layer
+    //
+    this.id = id
     //
     this.left = left
     this.top = top
@@ -1368,25 +1370,33 @@ function Panel(layer, left, top, width, height, bgColor) {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-function createPanel(layer, left, top, width, height, bgColor) {
+function createPanel(layer, name, left, top, width, height, bgColor) {
     //
-    layer.box.shallRepaint = true
+    const box = layer.box
+    //
+    box.shallRepaint = true
     //
     const func = "layer.createPanel"
     //
-    assureMinimumInteger("width", func, width, 10)
+    assureName("name", func, name)
     //
-    assureMinimumInteger("height", func, height, 10)
+    const id = layer.id + "." + name
+    //
+    assureFreeId("name", func, id, box.elements)
     //
     assureMinimumInteger("left", func, left, 0)
     //
     assureMinimumInteger("top", func, top, 0)
     //
+    assureMinimumInteger("width", func, width, 1)
+    //
+    assureMinimumInteger("height", func, height, 1)
+    //
     if (bgColor === null) { bgColor = "transparent" }
     //
     assureColor("bgColor", func, bgColor)
     //
-    const panel = new Panel(layer, left, top, width, height, bgColor)
+    const panel = new Panel(layer, id, left, top, width, height, bgColor)
     //
     Object.seal(panel)
     //
@@ -1395,44 +1405,51 @@ function createPanel(layer, left, top, width, height, bgColor) {
     //
     layer.panels.push(panel)
     //
-    return createPanelUser(panel)
+    box.elements[id] = createPanelUserObj(panel)
+    //
+    return box.elements[id]
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
-function createPanelUser(panel) {
+function createPanelUserObj(panel) {
     //
-    const obj = {
+    const obj = { }
+    //
+    obj["hide"] = function () { hidePanel(panel) }
+    obj["show"] = function () { showPanel(panel) }
+    //
+    obj["write"] = function (left, top, txt) { return writeOnPanel(panel, left, top, txt) }
+    //
+    obj["setFont"] = function (id) { setPanelFont(panel, id) }
+    //
+    obj["clearRect"] = function (left, top, width, height, color) {
         //
-        "hide": function () { hidePanel(panel) },
-        "show": function () { showPanel(panel) },
-        //
-        "write": function (left, top, txt) { return writeOnPanel(panel, left, top, txt) },
-        //
-        "setFont": function (id) { setPanelFont(panel, id) },
-        //
-        "clearRect": function (left, top, width, height, color) {
-            //
-            clearRectOnPanel(panel, left, top, width, height, color)
-        },
-        //
-        "paintRect": function (left, top, width, height, color) {
-            //
-            paintRectOnPanel(panel, left, top, width, height, color)
-        },
-        //
-        "paintImage": function (left, top, img) { paintImageOnPanel(panel, left, top, img) },
-        //
-        "setBgColor": function (color) { setPanelBgColor(panel, color) },
-        //
-        "createButton": function (left, top, width, height, bgColor) { return createButton(panel, left, top, width, height, bgColor) },
-        //
-        "createSurface": function (left, top, width, height, bgColor) { return createSurface(panel, left, top, width, height, bgColor) },
-        //
-        "visible": function () { return panel.visible },
-        //
-        "log": function () { console.log(panel) }
+        clearRectOnPanel(panel, left, top, width, height, color)
     }
+    //
+    obj["paintRect"] = function (left, top, width, height, color) {
+        //
+        paintRectOnPanel(panel, left, top, width, height, color)
+    }
+    //
+    obj["paintImage"] = function (left, top, img) { paintImageOnPanel(panel, left, top, img) }
+    //
+    obj["setBgColor"] = function (color) { setPanelBgColor(panel, color) }
+    //
+    obj["createButton"] = function (name, left, top, width, height, bgColor) {
+        //
+        return createButton(panel, name, left, top, width, height, bgColor)
+    }
+    //
+    obj["createSurface"] = function (name, left, top, width, height, bgColor) {
+        //
+        return createSurface(panel, name, left, top, width, height, bgColor)
+    }
+    //
+    obj["visible"] = function () { return panel.visible }
+    //
+    obj["log"] = function () { console.log(panel) }
     //
     Object.freeze(obj)
     return obj
@@ -1500,9 +1517,9 @@ function assurePanelFitsInStage(panel) {
     //
     const id = panel.id + " of layer " + panel.layer.id
     //
-    if (panel.left + panel.width > box.width) { throw("-- panel " + id + " passes right edge of stage") }
+    if (panel.left + panel.width > box.width) { throw "-- panel " + id + " passes right edge of stage" }
     //
-    if (panel.top + panel.height > box.height) { throw("-- panel " + id + " passes bottom edge of stage") }
+    if (panel.top + panel.height > box.height) { throw "-- panel " + id + " passes bottom edge of stage" }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1519,7 +1536,7 @@ function assurePanelDoesntClash(panel) {
         //
         if (panel.top + panel.height <= neighbor.top) { continue } // neighbor is below
         //
-        throw("-- panel " + panel.id + " clashes with panel " + neighbor.id + " in layer " + panel.layer.id)
+        throw "-- panel " + panel.id + " clashes with panel " + neighbor.id
     }
 }
 
@@ -1543,6 +1560,7 @@ function paintPanelUnderWidget(widget, color) {
 
 
 // [[source/stage.js]] ########################################################
+
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -1601,14 +1619,16 @@ function paintLayer(layer) {
 
 // [[source/surface.js]] ######################################################
 
+
 ///////////////////////////////////////////////////////////////////////////////
 
-function Surface(panel, left, top, width, height, bgColor) {
+function Surface(panel, id, left, top, width, height, bgColor) {
     //
-    this.id = panel.widgets.length + 1
+    this.panel = panel
     //
     this.kind = "surface"
-    this.panel = panel
+    //
+    this.id = id
     //
     this.left = left
     this.top = top
@@ -1631,23 +1651,33 @@ function Surface(panel, left, top, width, height, bgColor) {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-function createSurface(panel, left, top, width, height, bgColor) {
+function createSurface(panel, name, left, top, width, height, bgColor) {
+    //
+    const box = panel.layer.box
+    //
+    box.shallRepaint = true
     //
     const func = "panel.createSurface"
     //
-    assureMinimumInteger("width", func, width, 1)
+    assureName("name", func, name)
     //
-    assureMinimumInteger("height", func, height, 1)
+    const id = panel.id + "." + name
+    //
+    assureFreeId("name", func, id, box.elements)
     //
     assureMinimumInteger("left", func, left, 0)
     //
     assureMinimumInteger("top", func, top, 0)
     //
+    assureMinimumInteger("width", func, width, 1)
+    //
+    assureMinimumInteger("height", func, height, 1)
+    //
     if (bgColor === null) { bgColor = "transparent" }
     //
     assureColor("bgColor", func, bgColor)
     //
-    const surface = new Surface(panel, left, top, width, height, bgColor)
+    const surface = new Surface(panel, id, left, top, width, height, bgColor)
     //
     Object.seal(surface)
     //
@@ -1656,34 +1686,35 @@ function createSurface(panel, left, top, width, height, bgColor) {
     //
     panel.widgets.push(surface)
     //
+    box.elements[id] = createSurfaceUserObj(surface)
+    //
     paintSurface(surface)
     //
-    return createSurfaceUser(surface)
+    return box.elements[id]
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
-function createSurfaceUser(surface) {
+function createSurfaceUserObj(surface) {
     //
-    const obj = {
-        //
-        "hide": function () { hideSurface(surface) },
-        "show": function () { showSurface(surface) },
-        //
-        "setImage": function (img) { setSurfaceImage(surface, img) },
-        //
-        "setBgColor": function (color) { setSurfaceBgColor(surface, color) },
-        //
-        "setOnMouseUp": function (h) { setSurfaceOnMouseUp(surface, h) },
-        "setOnMouseDown": function (h) { setSurfaceOnMouseDown(surface, h) },
-        "setOnMouseMove": function (h) { setSurfaceOnMouseMove(surface, h) },
-        "setOnMouseEnter": function (h) { setSurfaceOnMouseEnter(surface, h) },
-        "setOnMouseLeave": function (h) { setSurfaceOnMouseLeave(surface, h) },
-        //
-        "visible": function () { return surface.visible },
-        //
-        "log": function () { console.log(surface) }
-    }
+    const obj = { }
+    //
+    obj["hide"] = function () { hideSurface(surface) }
+    obj["show"] = function () { showSurface(surface) }
+    //
+    obj["setImage"] = function (img) { setSurfaceImage(surface, img) }
+    //
+    obj["setBgColor"] = function (color) { setSurfaceBgColor(surface, color) }
+    //
+    obj["setOnMouseUp"] = function (h) { setSurfaceOnMouseUp(surface, h) }
+    obj["setOnMouseDown"] = function (h) { setSurfaceOnMouseDown(surface, h) }
+    obj["setOnMouseMove"] = function (h) { setSurfaceOnMouseMove(surface, h) }
+    obj["setOnMouseEnter"] = function (h) { setSurfaceOnMouseEnter(surface, h) }
+    obj["setOnMouseLeave"] = function (h) { setSurfaceOnMouseLeave(surface, h) }
+    //
+    obj["visible"] = function () { return surface.visible }
+    //
+    obj["log"] = function () { console.log(surface) }
     //
     Object.freeze(obj)
     return obj
@@ -1779,6 +1810,7 @@ function setSurfaceOnMouseUp(surface, handler) {
 
 
 // [[source/utils.js]] ########################################################
+
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -1963,6 +1995,7 @@ function createCheckerboard(width, height, w, h, colorA, colorB) {
 
 // [[source/widget.js]] #######################################################
 
+
 ///////////////////////////////////////////////////////////////////////////////
 
 function assureWidgetFitsInPanel(w) { // minimum left & top checked
@@ -1971,11 +2004,11 @@ function assureWidgetFitsInPanel(w) { // minimum left & top checked
     //
     const txt1 = "-- widget " + w.id + " passes "
     //
-    const txt2 = " edge of panel " + panel.id + " of layer " + panel.layer.id
+    const txt2 = " edge of its panel"
     //
-    if (w.left + w.width > panel.width)  { throw(txt1 + "right" + txt2) }
+    if (w.left + w.width > panel.width)  { throw txt1 + "right" + txt2 }
     //
-    if (w.top + w.height > panel.height) { throw(txt1 + "bottom" + txt2) }
+    if (w.top + w.height > panel.height) { throw txt1 + "bottom" + txt2 }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1992,8 +2025,41 @@ function assureWidgetDoesntClash(w) {
         //
         if (w.top + w.height <= candidate.top) { continue } // candidate is below
         //
-        throw("-- widget " + w.id + " clashes with widget " + candidate.id)
+        throw "-- widget " + w.id + " clashes with widget " + candidate.id
     }
 }
 
-} // end of library 
+
+// [[source/LIBRARY.js]] ######################################################
+
+
+///////////////////////////////////////////////////////////////////////////////
+
+function __createTheLibraryObject() {
+    //
+    const lib = {
+        //
+        "allFonts": allFonts,
+        "allImages": allImages,
+        "createLoader": createLoader,
+        //
+        "cloneImage": cloneImageUser,
+        "createCanvas": createColorCanvasUser,
+        "fadeImage": fadeImageUser,
+        "createCheckerboard": createCheckerboardUser,
+        "negativeFromImage": negativeFromImageUser,
+        "createLabel": createLabelUser,
+        "calcTextLength": calcTextLengthUser,
+        //
+        "createBox": createBox
+    }
+    //
+    Object.freeze(lib)
+    return lib
+}
+
+
+
+return __createTheLibraryObject()
+
+}
