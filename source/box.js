@@ -1,3 +1,7 @@
+// # Copyright (c) 2022 Feudal Code Limitada #
+// MIT License
+"use strict"
+
 ///////////////////////////////////////////////////////////////////////////////
 
 function mainLoop(box) {
@@ -21,9 +25,10 @@ function Box(width, height, parent) {
     //
     this.stage = null
     this.stageCtx = null
+    //
     this.layers = [ ]
-    this.panels = [ ]
-    this.widgets = [ ]
+    //
+    this.elements = { }
     //
     this.focusedWidget = null
     this.lastWidgetUnderMouse = null 
@@ -40,9 +45,10 @@ function createBox(width, height, parent) {
     //
     assureMinimumInteger("height", "createBox", height, 30) 
     //
-    if (parent.appendChild == undefined) { throw("-- invalid parent for the box: missing appendChild") }
+    if (parent.appendChild == undefined) { throw "-- invalid parent for the box: missing appendChild" }
     //
     const box = new Box(width, height, parent)
+    Object.seal(box)
     //
     createStage(box)
     //
@@ -57,14 +63,27 @@ function createBoxUser(box) {
     //
     boxUser["setBgColor"] = function (color) { setStageBgColor(box, color) }
     //
-    boxUser["initLayers"] = function (ids) { initLayers(box, ids) }
+    boxUser["initLayers"] = function (names) { initLayers(box, names) }
     //
-    boxUser["exchangeLayers"] = function (ids) { exchangeLayers(box, ids) }
+    boxUser["get"] = function (id) { return getUser(box, id) }
     //
-    boxUser["getLayer"] = function (id) { return getLayerUser(box, id) }
+    boxUser["log"] = function () { console.log(box) }
     //
     Object.freeze(boxUser)
     //
     return boxUser    
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+function getUser(box, id) {
+    //
+    assureString("id", "box.get", id)
+    //
+    const element = box.elements[id]
+    //
+    if (element == undefined) { throw "no element matches this id: " + id }
+    //
+    return element
 }
 

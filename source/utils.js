@@ -1,3 +1,7 @@
+// # Copyright (c) 2022 Feudal Code Limitada #
+// MIT License
+"use strict"
+
 ///////////////////////////////////////////////////////////////////////////////
 
 function createLabelUser(fontId, bgColor, padLeft, padRight, padTop, padBottom, text) {

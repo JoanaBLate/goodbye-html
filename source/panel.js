@@ -1,10 +1,14 @@
+// # Copyright (c) 2022 Feudal Code Limitada #
+// MIT License
+"use strict"
+
 ///////////////////////////////////////////////////////////////////////////////
 
-function Panel(layer, left, top, width, height, bgColor) {
-    //
-    this.id = layer.panels.length + 1
+function Panel(layer, id, left, top, width, height, bgColor) {
     //
     this.layer = layer
+    //
+    this.id = id
     //
     this.left = left
     this.top = top
@@ -25,25 +29,33 @@ function Panel(layer, left, top, width, height, bgColor) {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-function createPanel(layer, left, top, width, height, bgColor) {
+function createPanel(layer, name, left, top, width, height, bgColor) {
     //
-    layer.box.shallRepaint = true
+    const box = layer.box
+    //
+    box.shallRepaint = true
     //
     const func = "layer.createPanel"
     //
-    assureMinimumInteger("width", func, width, 10) 
+    assureName("name", func, name)
     //
-    assureMinimumInteger("height", func, height, 10) 
+    const id = layer.id + "." + name
+    //
+    assureFreeId("name", func, id, box.elements)
     //
     assureMinimumInteger("left", func, left, 0) 
     //
-    assureMinimumInteger("top", func, top, 0)
+    assureMinimumInteger("top", func, top, 0) 
+    //
+    assureMinimumInteger("width", func, width, 1) 
+    //
+    assureMinimumInteger("height", func, height, 1) 
     //
     if (bgColor === null) { bgColor = "transparent" }
     //
-    assureColor("bgColor", func, bgColor) 
+    assureColor("bgColor", func, bgColor)
     //
-    const panel = new Panel(layer, left, top, width, height, bgColor)
+    const panel = new Panel(layer, id, left, top, width, height, bgColor)
     //
     Object.seal(panel)
     //
@@ -52,44 +64,51 @@ function createPanel(layer, left, top, width, height, bgColor) {
     //
     layer.panels.push(panel)
     //
-    return createPanelUser(panel)
+    box.elements[id] = createPanelUserObj(panel)
+    //
+    return box.elements[id]
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
-function createPanelUser(panel) {
+function createPanelUserObj(panel) {
     //
-    const obj = {
+    const obj = { }
+    //
+    obj["hide"] = function () { hidePanel(panel) }
+    obj["show"] = function () { showPanel(panel) }
+    //
+    obj["write"] = function (left, top, txt) { return writeOnPanel(panel, left, top, txt) }
+    //
+    obj["setFont"] = function (id) { setPanelFont(panel, id) }
+    //
+    obj["clearRect"] = function (left, top, width, height, color) {  
         //
-        "hide": function () { hidePanel(panel) },
-        "show": function () { showPanel(panel) },
-        //
-        "write": function (left, top, txt) { return writeOnPanel(panel, left, top, txt) },
-        //
-        "setFont": function (id) { setPanelFont(panel, id) },
-        //
-        "clearRect": function (left, top, width, height, color) {  
-            //
-            clearRectOnPanel(panel, left, top, width, height, color) 
-        },
-        //
-        "paintRect": function (left, top, width, height, color) {  
-            //
-            paintRectOnPanel(panel, left, top, width, height, color) 
-        },
-        //
-        "paintImage": function (left, top, img) { paintImageOnPanel(panel, left, top, img) },
-        //
-        "setBgColor": function (color) { setPanelBgColor(panel, color) },
-        //
-        "createButton": function (left, top, width, height, bgColor) { return createButton(panel, left, top, width, height, bgColor) },
-        //
-        "createSurface": function (left, top, width, height, bgColor) { return createSurface(panel, left, top, width, height, bgColor) },
-        //
-        "visible": function () { return panel.visible },
-        //
-        "log": function () { console.log(panel) }
+        clearRectOnPanel(panel, left, top, width, height, color) 
     }
+    //
+    obj["paintRect"] = function (left, top, width, height, color) {  
+        //
+        paintRectOnPanel(panel, left, top, width, height, color) 
+    }
+    //
+    obj["paintImage"] = function (left, top, img) { paintImageOnPanel(panel, left, top, img) }
+    //
+    obj["setBgColor"] = function (color) { setPanelBgColor(panel, color) }
+    //
+    obj["createButton"] = function (name, left, top, width, height, bgColor) { 
+        //
+        return createButton(panel, name, left, top, width, height, bgColor) 
+    }        
+    //
+    obj["createSurface"] = function (name, left, top, width, height, bgColor) { 
+        //
+        return createSurface(panel, name, left, top, width, height, bgColor) 
+    }
+    //    
+    obj["visible"] = function () { return panel.visible }
+    //
+    obj["log"] = function () { console.log(panel) }
     //
     Object.freeze(obj)
     return obj
@@ -157,9 +176,9 @@ function assurePanelFitsInStage(panel) {
     //
     const id = panel.id + " of layer " + panel.layer.id
     //
-    if (panel.left + panel.width > box.width) { throw("-- panel " + id + " passes right edge of stage") }
+    if (panel.left + panel.width > box.width) { throw "-- panel " + id + " passes right edge of stage" }
     //
-    if (panel.top + panel.height > box.height) { throw("-- panel " + id + " passes bottom edge of stage") }
+    if (panel.top + panel.height > box.height) { throw "-- panel " + id + " passes bottom edge of stage" }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -176,7 +195,7 @@ function assurePanelDoesntClash(panel) {
         //
         if (panel.top + panel.height <= neighbor.top) { continue } // neighbor is below
         //
-        throw("-- panel " + panel.id + " clashes with panel " + neighbor.id + " in layer " + panel.layer.id)
+        throw "-- panel " + panel.id + " clashes with panel " + neighbor.id
     }
 }
 

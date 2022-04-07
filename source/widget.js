@@ -1,3 +1,7 @@
+// # Copyright (c) 2022 Feudal Code Limitada #
+// MIT License
+"use strict"
+
 ///////////////////////////////////////////////////////////////////////////////
 
 function assureWidgetFitsInPanel(w) { // minimum left & top checked
@@ -6,11 +10,11 @@ function assureWidgetFitsInPanel(w) { // minimum left & top checked
     //
     const txt1 = "-- widget " + w.id + " passes "
     //
-    const txt2 = " edge of panel " + panel.id + " of layer " + panel.layer.id
+    const txt2 = " edge of its panel"
     //
-    if (w.left + w.width > panel.width)  { throw(txt1 + "right" + txt2) }
+    if (w.left + w.width > panel.width)  { throw txt1 + "right" + txt2 }
     //
-    if (w.top + w.height > panel.height) { throw(txt1 + "bottom" + txt2) }
+    if (w.top + w.height > panel.height) { throw txt1 + "bottom" + txt2 }
 }
   
 ///////////////////////////////////////////////////////////////////////////////
@@ -27,7 +31,7 @@ function assureWidgetDoesntClash(w) {
         //
         if (w.top + w.height <= candidate.top) { continue } // candidate is below
         //
-        throw("-- widget " + w.id + " clashes with widget " + candidate.id)
+        throw "-- widget " + w.id + " clashes with widget " + candidate.id
     }
 }
 

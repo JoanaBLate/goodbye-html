@@ -1,119 +1,79 @@
+// # Copyright (c) 2022 Feudal Code Limitada #
+// MIT License
+"use strict"
+
 ///////////////////////////////////////////////////////////////////////////////
 
-function createLayer(id, box) {
+function Layer(box, id) {
     //
-    const layer = { "id": id, "box": box, "visible": true, "panels": [ ] }
+    this.box = box
+    //
+    this.id = id
+    //
+    this.visible = true
+    //
+    this.panels = [ ] 
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+function createLayer(box, id) {
+    //
+    const layer = new Layer(box, id)
     //
     Object.seal(layer)
     //
-    return layer
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
-function getLayer(box, id) {
+    box.layers.push(layer)
     //
-    for (const layer of box.layers) { 
-        //
-        if (layer.id == id) { return layer }
-    }
-    return null    
-}
-
-function getLayerOrClash(box, id, func) {
-    //
-    const layer = getLayer(box, id)
-    //
-    if (layer != null) { return layer }
-    //
-    argError("id", func, "unknown layer: " + id)
+    box.elements[id] = createLayerUserObj(box, layer)
 }
 
 /////////////////////////////////////////////////////////////////////////////////
 
-function getLayerUser(box, id) {
+function createLayerUserObj(box, layer) {
     //
-    const layer = getLayerOrClash(box, id, "box.getLayer")
+    const obj = { }
     //
-    const obj = {
+    obj["id"] = layer.id
+    //
+    obj["show"] = function () { layer.visible = true; box.shallRepaint = true }
+    //
+    obj["hide"] = function () { layer.visible = false; box.shallRepaint = true }
+    //
+    obj["visible"] = function () { return layer.visible }
+    //
+    obj["createPanel"] = function (name, left, top, width, height, bgColor) { 
         //
-        "id": layer.id,
-        //   
-        "createPanel": function (left, top, width, height, bgColor) { return createPanel(layer, left, top, width, height, bgColor) },
-        //
-        "show": function () { layer.visible = true; box.shallRepaint = true },
-        //
-        "hide": function () { layer.visible = false; box.shallRepaint = true },
-        //
-        "visible": function () { return layer.visible },
-        //
-        "log": function () { console.log(layer) }
+        return createPanel(layer, name, left, top, width, height, bgColor)
     }
+    //
+    obj["log"] = function () { console.log(layer) }
     //
     Object.freeze(obj)
     return obj
 }
 
+
 /////////////////////////////////////////////////////////////////////////////////
 
-function initLayers(box, ids) {
+function initLayers(box, names) {
     //
-    const param = "ids"
-    const func = "box.createLayers"
+    const param = "names"
+    const func = "box.initLayers"
     //
     if (box.layers.length != 0) { throw("-- calling again function " + func) }
     //
-    assureNonEmptyList(param, func, ids)
+    assureNonEmptyList(param, func, names)
     //
-    for (const id of ids) {
+    for (const name of names) {
         //
-        if (typeof id != "string") { argError(param, func, "this item is not a string: " + id) }
+        if (typeof name != "string") { argError(param, func, "this item is not a string: " + name) }
         //
-        if (id === "") { argError(param, func, "empty string inside the list") } 
+        if (name === "") { argError(param, func, "empty string inside the list") } 
         //
-        if (getLayer(box, id) != null) { argError(param, func, "duplicated id: " + id) }
+        if (box.elements[name]) { argError(param, func, "duplicated id: " + name) }
         //
-        const layer = createLayer(id, box)        
-        //
-        box.layers.push(layer)
+        createLayer(box, name) 
     }
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
-function exchangeLayers(box, ids) { 
-    //
-    box.shallRepaint = true
-    //
-    const param = "ids"
-    const func = "box.exchangeLayers"
-    //
-    assureList(param, func, ids)
-    //
-    if (ids.length != box.layers.length) { 
-        //
-        argError(param, func, "expecting list with " + box.layers.length + " items, got: " + ids.length + " items")
-    }
-    //
-    const doneIds = [ ]
-    const layers = [ ]
-    //
-    for (const id of ids) {
-        //
-        if (typeof id != "string") { argError(param, func, "this item is not a string: " + id) }
-        //
-        if (id === "") { argError(param, func, "empty string inside the list") } 
-        //
-        if (doneIds.includes(id)) { argError(param, func, "duplicated item: " + id) }
-        //
-        const layer = getLayer(box, id) 
-        //
-        if (layer == null) { argError(param, func, "unknown virtual layer: " + id) }
-        //
-        doneIds.push(id)
-        layers.push(layer)
-    }
-    //
-    box.layers = layers
 }
 

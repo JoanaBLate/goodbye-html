@@ -1,15 +1,10 @@
-"use strict"    
+// # Copyright (c) 2022 Feudal Code Limitada #
+// MIT License
+"use strict"
 
 ///////////////////////////////////////////////////////////////////////////////
 
-function createGoodbyeHtmlLibrary() {
-    //
-    let resourcesToLoad = 0
-    //
-    const allImages = { }
-    //
-    const allFonts = { }
-    //
+function __createTheLibraryObject() {
     //
     const lib = {
         //
@@ -30,7 +25,5 @@ function createGoodbyeHtmlLibrary() {
     //
     Object.freeze(lib)
     return lib
+}
 
-// ############################################################################
-// ############################################################################
-// ############################################################################

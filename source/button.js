@@ -1,11 +1,16 @@
+// # Copyright (c) 2022 Feudal Code Limitada #
+// MIT License
+"use strict"
+
 ///////////////////////////////////////////////////////////////////////////////
 
-function Button(panel, left, top, width, height, bgColor) { // , fontId, text) {
+function Button(panel, id, left, top, width, height, bgColor) { 
     //
-    this.id = panel.widgets.length + 1
+    this.panel = panel
     //
     this.kind = "button"
-    this.panel = panel
+    //
+    this.id = id
     //
     this.left = left
     this.top = top
@@ -35,9 +40,19 @@ function Button(panel, left, top, width, height, bgColor) { // , fontId, text) {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-function createButton(panel, left, top, width, height, bgColor) { // , fontId, text) {
+function createButton(panel, name, left, top, width, height, bgColor) {
+    //
+    const box = panel.layer.box
+    //
+    box.shallRepaint = true
     //
     const func = "panel.createButton"
+    //
+    assureName("name", func, name)
+    //
+    const id = panel.id + "." + name
+    //
+    assureFreeId("name", func, id, box.elements)
     //
     assureMinimumInteger("left", func, left, 0) 
     //
@@ -50,12 +65,8 @@ function createButton(panel, left, top, width, height, bgColor) { // , fontId, t
     if (bgColor === null) { bgColor = "transparent" }
     //
     assureColor("bgColor", func, bgColor)
-    /*/
-    assureGoodId("fontId", func, fontId, allFonts)
     //
-    assureString("text", func, text)
-    /*/
-    const button = new Button(panel, left, top, width, height, bgColor) // , fontId, text)
+    const button = new Button(panel, id, left, top, width, height, bgColor) 
     //
     Object.seal(button)
     //
@@ -64,39 +75,40 @@ function createButton(panel, left, top, width, height, bgColor) { // , fontId, t
     //
     panel.widgets.push(button)
     //
+    box.elements[id] = createButtonUserObj(button)
+    //
     paintButton(button)
     //
-    return createButtonUser(button)
+    return box.elements[id]
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
-function createButtonUser(button) {
+function createButtonUserObj(button) {
     //
-    const obj = {
-        //
-        "hide": function () { hideButton(button) },
-        "show": function () { showButton(button) },
-        //
-        "setImageNormal": function (img) { setButtonImageNormal(button, img) }, 
-        "setImageActive": function (img) { setButtonImageActive(button, img) }, 
-        "setImagePressed": function (img) { setButtonImagePressed(button, img) }, 
-        "setImageDisabled": function (img) { setButtonImageDisabled(button, img) }, 
-        //
-        "disable": function () { button.state = "disabled"; paintButton(button); button.pressed = false },
-        "activate": function () { button.state = "active"; paintButton(button);  button.pressed = false },
-        "normalize": function () { button.state = "normal"; paintButton(button); button.pressed = false },
-        //
-        "setBgColor": function (color) { setButtonBgColor(button, color) },
-        //
-        "setOnClick": function (handler) { setButtonOnClick(button, handler) },
-        //
-        "setButtonText": function (fontId, text) { setButtonText(button, fontId, text) },
-        //
-        "visible": function () { return button.visible },
-        //
-        "log": function () { console.log(button) }
-    }
+    const obj = { }
+    //
+    obj["hide"] = function () { hideButton(button) }
+    obj["show"] = function () { showButton(button) }
+    //
+    obj["setImageNormal"] = function (img) { setButtonImageNormal(button, img) } 
+    obj["setImageActive"] = function (img) { setButtonImageActive(button, img) } 
+    obj["setImagePressed"] = function (img) { setButtonImagePressed(button, img) } 
+    obj["setImageDisabled"] = function (img) { setButtonImageDisabled(button, img) } 
+    //
+    obj["disable"] = function () { button.state = "disabled"; paintButton(button); button.pressed = false }
+    obj["activate"] = function () { button.state = "active"; paintButton(button);  button.pressed = false }
+    obj["normalize"] = function () { button.state = "normal"; paintButton(button); button.pressed = false }
+    //
+    obj["setBgColor"] = function (color) { setButtonBgColor(button, color) }
+    //
+    obj["setOnClick"] = function (handler) { setButtonOnClick(button, handler) }
+    //
+    obj["setButtonText"] = function (fontId, text) { setButtonText(button, fontId, text) }
+    //
+    obj["visible"] = function () { return button.visible }
+    //
+    obj["log"] = function () { console.log(button) }
     //
     Object.freeze(obj)
     return obj

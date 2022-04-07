@@ -1,11 +1,16 @@
+// # Copyright (c) 2022 Feudal Code Limitada #
+// MIT License
+"use strict"
+
 ///////////////////////////////////////////////////////////////////////////////
 
-function Surface(panel, left, top, width, height, bgColor) {
+function Surface(panel, id, left, top, width, height, bgColor) {
     //
-    this.id = panel.widgets.length + 1
+    this.panel = panel
     //
     this.kind = "surface"
-    this.panel = panel
+    //
+    this.id = id
     //
     this.left = left
     this.top = top
@@ -28,23 +33,33 @@ function Surface(panel, left, top, width, height, bgColor) {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-function createSurface(panel, left, top, width, height, bgColor) {
+function createSurface(panel, name, left, top, width, height, bgColor) {
+    //
+    const box = panel.layer.box
+    //
+    box.shallRepaint = true
     //
     const func = "panel.createSurface"
     //
-    assureMinimumInteger("width", func, width, 1) 
+    assureName("name", func, name)
     //
-    assureMinimumInteger("height", func, height, 1) 
+    const id = panel.id + "." + name
+    //
+    assureFreeId("name", func, id, box.elements)
     //
     assureMinimumInteger("left", func, left, 0) 
     //
     assureMinimumInteger("top", func, top, 0) 
     //
+    assureMinimumInteger("width", func, width, 1) 
+    //
+    assureMinimumInteger("height", func, height, 1) 
+    //
     if (bgColor === null) { bgColor = "transparent" }
     //
     assureColor("bgColor", func, bgColor)
     //
-    const surface = new Surface(panel, left, top, width, height, bgColor)
+    const surface = new Surface(panel, id, left, top, width, height, bgColor)
     //
     Object.seal(surface)
     //
@@ -53,34 +68,35 @@ function createSurface(panel, left, top, width, height, bgColor) {
     //
     panel.widgets.push(surface)
     //
+    box.elements[id] = createSurfaceUserObj(surface)
+    //
     paintSurface(surface)
     //
-    return createSurfaceUser(surface)
+    return box.elements[id] 
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
-function createSurfaceUser(surface) {
+function createSurfaceUserObj(surface) {
     //
-    const obj = {
-        //
-        "hide": function () { hideSurface(surface) },
-        "show": function () { showSurface(surface) },
-        //
-        "setImage": function (img) { setSurfaceImage(surface, img) }, 
-        //
-        "setBgColor": function (color) { setSurfaceBgColor(surface, color) },
-        //
-        "setOnMouseUp": function (h) { setSurfaceOnMouseUp(surface, h) },
-        "setOnMouseDown": function (h) { setSurfaceOnMouseDown(surface, h) },
-        "setOnMouseMove": function (h) { setSurfaceOnMouseMove(surface, h) },
-        "setOnMouseEnter": function (h) { setSurfaceOnMouseEnter(surface, h) },
-        "setOnMouseLeave": function (h) { setSurfaceOnMouseLeave(surface, h) },
-        //
-        "visible": function () { return surface.visible },
-        //
-        "log": function () { console.log(surface) }
-    }
+    const obj = { }
+    //
+    obj["hide"] = function () { hideSurface(surface) }
+    obj["show"] = function () { showSurface(surface) }
+    //
+    obj["setImage"] = function (img) { setSurfaceImage(surface, img) }
+    //
+    obj["setBgColor"] = function (color) { setSurfaceBgColor(surface, color) }
+    //
+    obj["setOnMouseUp"] = function (h) { setSurfaceOnMouseUp(surface, h) }
+    obj["setOnMouseDown"] = function (h) { setSurfaceOnMouseDown(surface, h) }
+    obj["setOnMouseMove"] = function (h) { setSurfaceOnMouseMove(surface, h) }
+    obj["setOnMouseEnter"] = function (h) { setSurfaceOnMouseEnter(surface, h) }
+    obj["setOnMouseLeave"] = function (h) { setSurfaceOnMouseLeave(surface, h) }
+    //
+    obj["visible"] = function () { return surface.visible }
+    //
+    obj["log"] = function () { console.log(surface) }
     //
     Object.freeze(obj)
     return obj

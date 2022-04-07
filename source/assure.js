@@ -1,3 +1,7 @@
+// # Copyright (c) 2022 Feudal Code Limitada #
+// MIT License
+"use strict"
+
 ///////////////////////////////////////////////////////////////////////////////
 
 function argError(param, func, txt) {
@@ -122,6 +126,37 @@ function assureSolidColor(param, func, val) {
     assureColor(param, func, val)
     //
     if (! isSolidColor(val)) { argError(param, func, "not a solid color: " + val) }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+function assureName(param, func, val) {
+    //
+    if (typeof val != "string") { argError(param, func, "expecting name, got: " + val) }
+    //
+    if (val == "") { argError(param, func, "expecting name, got empty string") }
+    //
+    if (val != val.toLowerCase()) {
+        //
+        argError(param, func, "upper case letter(s) in name: " + val) 
+    }
+    //
+    if (val[0] < "a" || val[0] > "z") { 
+        //
+        argError(param, func, "name not starting with letter: " + val) 
+    }
+    //
+    for (const c of val) {
+        //
+        if (c >= "a"  &&  c <= "z") { continue }
+        if (c >= "0"  &&  c <= "9") { continue }
+        if (c != "-") {
+            //
+            argError(param, func, "invalid character '" + c + "' in name: " + val) 
+        }    
+    }
+    //
+    return val
 }
 
 ///////////////////////////////////////////////////////////////////////////////

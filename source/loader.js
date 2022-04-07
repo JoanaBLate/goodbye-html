@@ -1,3 +1,7 @@
+// # Copyright (c) 2022 Feudal Code Limitada #
+// MIT License
+"use strict"
+
 ///////////////////////////////////////////////////////////////////////////////
 
 function createLoader() {
@@ -17,7 +21,7 @@ function createLoader() {
 function setLoaderCallback(callback) {
     //
     if (typeof callback != "function") {
-        throw("-- wrong argument callback for function loader.ready, got: " + callback)
+        throw "-- wrong argument callback for function loader.ready, got: " + callback
     }
     //
     loaderDone(callback)
@@ -70,7 +74,7 @@ function loadFont(id, obj) {
     //
     if (typeof obj != "object") {
         //
-        throw("-- wrong argument obj for function loader.loadFont, got: " + id)
+        throw "-- wrong argument obj for function loader.loadFont, got: " + id
     }
     //
     assureNonEmptyString("object.src", "loader.loadFont", obj.src)
@@ -118,8 +122,8 @@ function createFont(id, sheet, reference) {
     //
     if (Math.floor(height) != height) { 
         //
-        throw("-- the height of the source image for font " + id + 
-             " divided by the number of the rows of the reference is not an integer")
+        throw "-- the height of the source image for font " + id + 
+             " divided by the number of the rows of the reference is not an integer"
     }
     // 
     let dict = { }
