@@ -61,6 +61,25 @@ const allFonts = { }
 
 let resourcesToLoad = 0
 
+let fileSelector = null
+let downloadLink = null
+
+
+// [[source/alert-confirm-prompt.js]] #########################################
+
+
+
+    // UNDER CONSTRUCTION //
+
+
+///////////////////////////////////////////////////////////////////////////////
+
+function setFontsForSpecialLayers(__fontId1, __fontId2) {
+    //
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
 
 // [[source/assure.js]] #######################################################
 
@@ -78,6 +97,28 @@ function argError(param, func, txt) {
 
 ///////////////////////////////////////////////////////////////////////////////
 
+function assureBoolean(param, func, val) {
+    //
+    if (val === true  ||  val === false) { return }
+    //
+    argError(param, func, "expecting boolean, got: " + val)
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+function __assureNumber(param, func, val) {
+    //
+    const msg = "expecting number, got: " + val
+    //
+    if (isNaN(val)) { argError(param, func, msg) }
+    //
+    if (typeof(val) == "string") { argError(param, func, msg.replace("got:", "got string:")) }
+    //
+    if (typeof(val) != "number") { argError(param, func, msg) }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
 function assureInteger(param, func, val) {
     //
     const msg = "expecting integer, got: " + val
@@ -89,6 +130,23 @@ function assureInteger(param, func, val) {
     if (typeof(val) != "number") { argError(param, func, msg) }
     //
     if (Math.floor(val) !== val) { argError(param, func, msg) }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+function assureThisInteger(param, func, val, ref) {
+    //
+    const msg = "expecting integer == " + ref + ", got: " + val
+    //
+    if (isNaN(val)) { argError(param, func, msg) }
+    //
+    if (typeof(val) == "string") { argError(param, func, msg.replace("got:", "got string:")) }
+    //
+    if (typeof(val) != "number") { argError(param, func, msg) }
+    //
+    if (Math.floor(val) !== val) { argError(param, func, msg) }
+    //
+    if (val != ref) { argError(param, func, msg) }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -159,7 +217,7 @@ function assureNullOrFunction(param, func, val) {
     if (val === null) { return }
     if (typeof val == "function") { return }
     //
-    argError(param, func, "expecting function, got: " + val)
+    argError(param, func, "expecting null or function, got: " + val)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -254,9 +312,11 @@ function mainLoop(box) {
     //
     box.loop += 1
     //
+    updateBlinking(box)
+    //
     if (box.shallRepaint) { paintStage(box); box.shallRepaint = false }
     //
-    setTimeout(function () { mainLoop(box) }, 33)
+    setTimeout(function () { mainLoop(box) }, 16)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -279,6 +339,9 @@ function Box(width, height, parent) {
     this.focusedWidget = null
     this.lastWidgetUnderMouse = null
     //
+    this.blinking = false // means the red phase of blinking
+    this.blinkingClock = 0
+    //
     this.loop = 0
     this.shallRepaint = true
 }
@@ -298,6 +361,9 @@ function createBox(width, height, parent) {
     //
     createStage(box)
     //
+    box.stage.tabIndex = "-1"
+    box.stage.onkeydown = function (e) { keyDownHandler(box, e) }
+    //
     return createBoxUser(box)
 }
 
@@ -311,7 +377,11 @@ function createBoxUser(box) {
     //
     boxUser["initLayers"] = function (names) { initLayers(box, names) }
     //
+    boxUser["getOrderOfLayers"] = function () { return orderOfLayers(box) }
+    //
     boxUser["get"] = function (id) { return getUser(box, id) }
+    //
+    boxUser["resetFocus"] = function () { resetFocus(box) }
     //
     boxUser["log"] = function () { console.log(box) }
     //
@@ -333,6 +403,62 @@ function getUser(box, id) {
     return element
 }
 
+///////////////////////////////////////////////////////////////////////////////
+
+function setFocus(box, widget) {
+    //
+    if (widget == null) { box.focusedWidget = null; return }
+    //
+    if (widget.kind == "textbox") { box.focusedWidget = widget }
+}
+
+function resetFocus(box) {
+    //
+    box.blinking = false
+    //
+    const widget = box.focusedWidget
+    //
+    box.focusedWidget = null
+    //
+    if (widget == null) { return }
+    //
+    if (widget.kind == "textbox") { paintTextbox(widget) }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+function startBlinking(widget) { // must be the box.focusedWidget
+    //
+    const box = widget.panel.layer.box
+    //
+    box.blinking = true
+    //
+    box.blinkingClock = box.loop + blinkingDuration(box.blinking)
+    //
+    paintTextbox(widget)
+}
+
+function updateBlinking(box) {
+    //
+    if (box.blinkingClock != box.loop) { return }
+    //
+    const widget = box.focusedWidget
+    //
+    if (widget == null) { return }
+    //
+    if (widget.kind != "textbox") { return }
+    //
+    box.blinking = ! box.blinking
+    box.blinkingClock = box.loop + blinkingDuration(box.blinking)
+    //
+    paintTextbox(widget)
+}
+
+function blinkingDuration(blinking) {
+    //
+    return blinking ? 40 : 30
+}
+
 
 // [[source/button.js]] #######################################################
 
@@ -352,20 +478,21 @@ function Button(panel, id, left, top, width, height, bgColor) {
     this.width = width
     this.height = height
     //
+    this.text = null
+    this.fontId = null
+    //
     this.visible = true
     //
     this.bgColor = bgColor
     //
-    this.text = null
-    this.fontId = null
+    this.pressed = false
+    this.disabled = false
+    this.active = false
     //
     this.imageNormal = createColorCanvas(width, height, bgColor)
     this.imageActive = createColorCanvas(width, height, bgColor)
     this.imagePressed = createColorCanvas(width, height, solidReversedColor(bgColor))
     this.imageDisabled = createColorCanvas(width, height, bgColor)
-    //
-    this.pressed = false
-    this.state = "normal" // active, disabled
     //
     this.onmouseup = function () { buttonOnMouseUp(this) }
     this.onmousedown = function () { buttonOnMouseDown(this) }
@@ -397,9 +524,7 @@ function createButton(panel, name, left, top, width, height, bgColor) {
     //
     assureMinimumInteger("height", func, height, 1)
     //
-    if (bgColor === null) { bgColor = "transparent" }
-    //
-    assureColor("bgColor", func, bgColor)
+    assureSolidColor("bgColor", func, bgColor)
     //
     const button = new Button(panel, id, left, top, width, height, bgColor)
     //
@@ -423,25 +548,33 @@ function createButtonUserObj(button) {
     //
     const obj = { }
     //
-    obj["hide"] = function () { hideButton(button) }
-    obj["show"] = function () { showButton(button) }
+    obj["hide"] = function () { button.visible = false; paintButton(button) }
+    obj["show"] = function () {button.visible = true; paintButton(button) }
+    //
+    obj["getVisible"] = function () { return button.visible }
     //
     obj["setImageNormal"] = function (img) { setButtonImageNormal(button, img) }
     obj["setImageActive"] = function (img) { setButtonImageActive(button, img) }
     obj["setImagePressed"] = function (img) { setButtonImagePressed(button, img) }
     obj["setImageDisabled"] = function (img) { setButtonImageDisabled(button, img) }
     //
-    obj["disable"] = function () { button.state = "disabled"; paintButton(button); button.pressed = false }
-    obj["activate"] = function () { button.state = "active"; paintButton(button);  button.pressed = false }
-    obj["normalize"] = function () { button.state = "normal"; paintButton(button); button.pressed = false }
+    obj["enable"] = function () { button.disabled = false; button.pressed = false; paintButton(button) }
+    obj["disable"] = function () { button.disabled = true; button.pressed = false; paintButton(button) }
+    //
+    obj["getDisabled"] = function () { return button.disabled }
+    //
+    obj["activate"] = function () { button.disabled = false; button.pressed = false; button.active = true; paintButton(button) }
+    obj["deactivate"] = function () { button.disabled = false; button.pressed = false; button.active = false; paintButton(button) }
+    //
+    obj["getActive"] = function () { return button.active }
     //
     obj["setBgColor"] = function (color) { setButtonBgColor(button, color) }
     //
+    obj["setText"] = function (fontId, text) { setButtonText(button, fontId, text) }
+    //
     obj["setOnClick"] = function (handler) { setButtonOnClick(button, handler) }
     //
-    obj["setButtonText"] = function (fontId, text) { setButtonText(button, fontId, text) }
-    //
-    obj["visible"] = function () { return button.visible }
+    obj["config"] = function (fontId, text, onclick) { configButton(button, fontId, text, onclick) }
     //
     obj["log"] = function () { console.log(button) }
     //
@@ -453,9 +586,9 @@ function createButtonUserObj(button) {
 
 function paintButton(button) {
     //
-    if (! button.visible) { paintPanelUnderWidget(button, null); return }
+    clearPanelUnderWidget(button)
     //
-    paintPanelUnderWidget(button, button.bgColor)
+    if (! button.visible) { return }
     //
     const img = getButtonImage(button)
     //
@@ -466,26 +599,10 @@ function paintButton(button) {
 
 function setButtonBgColor(button, color) {
     //
-    if (color === null) { color = "transparent" }
-    //
-    assureColor("color", "button.setBgColor", color)
+    assureSolidColor("color", "button.setBgColor", color)
     //
     button.bgColor = color
     //
-    paintButton(button)
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
-function hideButton(button) {
-    //
-    button.visible = false
-    paintButton(button)
-}
-
-function showButton(button) {
-    //
-    button.visible = true
     paintButton(button)
 }
 
@@ -495,9 +612,11 @@ function getButtonImage(button) {
     //
     if (button.pressed) { return button.imagePressed }
     //
-    if (button.state == "normal") { return button.imageNormal }
-    if (button.state == "active") { return button.imageActive }
-    if (button.state == "disabled") { return button.imageDisabled }
+    if (button.disabled) { return button.imageDisabled }
+    //
+    if (button.active) { return button.imageActive }
+    //
+    return button.imageNormal
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -551,7 +670,7 @@ function setButtonOnClick(button, handler) {
 
 function buttonOnMouseDown(button) {
     //
-    if (button.state == "disabled") { return }
+    if (button.disabled) { return }
     //
     button.pressed = true
     paintButton(button)
@@ -578,18 +697,337 @@ function buttonOnMouseUp(button) {
 }
 
 
-// [[source/button-text.js]] ##################################################
+// [[source/button-config.js]] ################################################
 
 
 ///////////////////////////////////////////////////////////////////////////////
 
-function setButtonText(__button, fontId, text) {
+function setButtonText(button, fontId, text) {
     //
     const func = "button.setText"
     //
     assureGoodId("fontId", func, fontId, allFonts)
     //
     assureString("text", func, text)
+    //
+    setButtonTextCore(button, fontId, text)
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+function configButton(button, fontId, text, onclick) {
+    //
+    const func = "button.config"
+    //
+    assureGoodId("fontId", func, fontId, allFonts)
+    //
+    assureString("text", func, text)
+    //
+    assureNullOrFunction("onclick", func, onclick)
+    //
+    button.onclick = onclick
+    //
+    setButtonTextCore(button, fontId, text)
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+function setButtonTextCore(button, fontId, text) {
+    //
+    button.text = text
+    //
+    const img = createLabel(fontId, "transparent", button.width, button.height, button.text)
+    //
+    const grey = getGreyFromString(button.bgColor)
+    //
+    const dark = grey < 160
+    //
+    button.imageNormal = makeButtonTextNormal(button, img, dark)
+    button.imageDisabled = makeButtonTextDisabled(button)
+    button.imagePressed = makeButtonImagePressed(button, dark)
+   //
+   paintButton(button)
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+function makeButtonTextNormal(button, img, dark) {
+    //
+    const width = button.width
+    const height = button.height
+    //
+    const cnv = createCanvas(width, height)
+    const ctx = cnv.getContext("2d")
+    //
+    ctx.fillStyle = button.bgColor
+    ctx.fillRect(0, 0, width, height)
+    //
+    ctx.fillStyle = dark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.2)"
+    //
+    ctx.fillRect(2, 0, button.width - 4, 2) // top border without corners
+    ctx.fillRect(2, button.height - 2, button.width - 4, 2) // bottom border without corners
+    //
+    ctx.fillRect(0, 0, 2, button.height) // full left border
+    ctx.fillRect(button.width - 2, 0, 2, button.height) // full right border
+    //
+    ctx.drawImage(img, 0, 0)
+    //
+    return cnv
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+function makeButtonTextDisabled(button) {
+    //
+    const width = button.width
+    const height = button.height
+    //
+    const cnv = createCanvas(width, height)
+    const ctx = cnv.getContext("2d")
+    //
+    ctx.fillStyle = "black"
+    //
+    ctx.fillRect(0, 0, width, height)
+    //
+    ctx.globalAlpha = 0.5
+    ctx.drawImage(button.imageNormal, 0, 0)
+    ctx.globalAlpha = 1
+    //
+    return cnv
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+function makeButtonImagePressed(button, dark) {
+    //
+    const width = button.width
+    const height = button.height
+    //
+    const cnv = createCanvas(width, height)
+    const ctx = cnv.getContext("2d")
+    //
+    ctx.fillStyle = button.bgColor
+    ctx.fillRect(0, 0, width, height)
+    //
+    ctx.fillStyle = dark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.2)"
+    //
+    ctx.fillRect(2, 0, button.width - 4, 2) // top border without corners
+    ctx.fillRect(2, button.height - 2, button.width - 4, 2) // bottom border without corners
+    //
+    ctx.fillRect(0, 0, 2, button.height) // full left border
+    ctx.fillRect(button.width - 2, 0, 2, button.height) // full right border
+    //
+    return cnv
+}
+
+
+// [[source/checkbox.js]] #####################################################
+
+
+///////////////////////////////////////////////////////////////////////////////
+
+function Checkbox(panel, id, left, top, dimension, checked, onclick) {
+    //
+    this.panel = panel
+    //
+    this.kind = "checkbox"
+    //
+    this.id = id
+    //
+    this.left = left
+    this.top = top
+    this.width = dimension
+    this.height = dimension
+    //
+    this.checked = checked
+    //
+    this.visible = true
+    //
+    this.pressed = false
+    this.disabled = false
+    //
+    this.imageChecked = null
+    this.imageUnchecked = null
+    this.fadeCover = null
+    //
+    this.onmouseup = function () { checkboxOnMouseUp(this) }
+    this.onmousedown = function () { checkboxOnMouseDown(this) }
+    this.onmouseleave = function () { checkboxOnMouseLeave(this) }
+    this.onclick = onclick
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+function createCheckbox(panel, name, left, top, dimension, checked, onclick) {
+    //
+    const box = panel.layer.box
+    //
+    box.shallRepaint = true
+    //
+    const func = "panel.createCheckbox"
+    //
+    assureName("name", func, name)
+    //
+    const id = panel.id + "." + name
+    //
+    assureFreeId("name", func, id, box.elements)
+    //
+    assureMinimumInteger("left", func, left, 0)
+    //
+    assureMinimumInteger("top", func, top, 0)
+    //
+    assureMinimumInteger("dimension", func, dimension, 12)
+    //
+    assureBoolean("checked", func, checked)
+    //
+    assureNullOrFunction("onclick", func, onclick)
+    //
+    const checkbox = new Checkbox(panel, id, left, top, dimension, checked, onclick)
+    //
+    Object.seal(checkbox)
+    //
+    setCheckboxImages(checkbox)
+    //
+    assureWidgetFitsInPanel(checkbox)
+    assureWidgetDoesntClash(checkbox)
+    //
+    panel.widgets.push(checkbox)
+    //
+    box.elements[id] = createCheckboxUserObj(checkbox)
+    //
+    paintCheckbox(checkbox)
+    //
+    return box.elements[id]
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+function createCheckboxUserObj(checkbox) {
+    //
+    const obj = { }
+    //
+    obj["hide"] = function () { checkbox.visible = false; paintCheckbox(checkbox) }
+    obj["show"] = function () { checkbox.visible = true; paintCheckbox(checkbox) }
+    //
+    obj["getVisible"] = function () { return checkbox.visible }
+    //
+    obj["enable"] = function () { checkbox.disabled = false; paintCheckbox(checkbox) }
+    obj["disable"] = function () { checkbox.disabled = true; paintCheckbox(checkbox) }
+    //
+    obj["setOnClick"] = function (handler) { setCheckboxOnClick(checkbox, handler) }
+    //
+    obj["getChecked"] = function () { return checkbox.checked }
+    //
+    obj["getDisabled"] = function () { return checkbox.disabled }
+    //
+    obj["log"] = function () { console.log(checkbox) }
+    //
+    Object.freeze(obj)
+    return obj
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+function setCheckboxImages(checkbox) {
+    //
+    const dim = checkbox.width
+    //
+    const grey = getGreyFromString(checkbox.panel.bgColor)
+    //
+    const dark = grey < 60
+    const color = fadeColor(dark ? "black" : "white", 0.7)
+    //
+    checkbox.imageChecked = createCheckedImage(dim, dark)
+    checkbox.imageUnchecked = createUncheckedImage(dim, dark)
+    checkbox.fadeCover = createColorCanvas(dim, dim, color)
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+function paintCheckbox(checkbox) {
+    //
+    clearPanelUnderWidget(checkbox)
+    //
+    if (! checkbox.visible) { return }
+    //
+    const img = checkbox.checked ? checkbox.imageChecked : checkbox.imageUnchecked
+    //
+    checkbox.panel.context.drawImage(img, checkbox.left, checkbox.top)
+    //
+    if (checkbox.disabled) { checkbox.panel.context.drawImage(checkbox.fadeCover, checkbox.left, checkbox.top) }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+function createUncheckedImage(dim, dark) {
+    //
+    const cnv = createCanvas(dim, dim)
+    const ctx = cnv.getContext("2d")
+    //
+    ctx.fillStyle = dark ? "dimgrey" : "black"
+    ctx.fillRect(0, 0, dim, dim)
+    //
+    ctx.fillStyle = dark ? "lightgrey" : "gainsboro"
+    ctx.fillRect(1, 1, dim-2, dim-2)
+    //
+    return cnv
+}
+
+function createCheckedImage(dim, dark) {
+    //
+    const cnv = createUncheckedImage(dim, dark)
+    const ctx = cnv.getContext("2d")
+    //
+    if (dark) {
+        ctx.fillStyle = "dimgrey"
+        ctx.fillRect(4, 4, dim-8, dim-8)
+    }
+    else {
+        ctx.fillStyle = "black"
+        ctx.fillRect(2, 2, dim-4, dim-4)
+    }
+    //
+    return cnv
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+function setCheckboxOnClick(checkbox, handler) {
+    //
+    assureNullOrFunction("handler", "checkbox.setOnClick", handler)
+    //
+    checkbox.onclick = handler
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+function checkboxOnMouseDown(checkbox) {
+    //
+    if (checkbox.disabled) { return }
+    //
+    checkbox.pressed = true
+    paintCheckbox(checkbox)
+}
+
+function checkboxOnMouseLeave(checkbox) {
+    //
+    if (checkbox.pressed) {
+        //
+        checkbox.pressed = false
+        paintCheckbox(checkbox)
+    }
+}
+
+function checkboxOnMouseUp(checkbox) {
+    //
+    if (checkbox.pressed) {
+        //
+        checkbox.pressed = false
+        checkbox.checked = ! checkbox.checked
+        paintCheckbox(checkbox)
+        //
+        if (checkbox.onclick) { checkbox.onclick() }
+    }
 }
 
 
@@ -598,17 +1036,17 @@ function setButtonText(__button, fontId, text) {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-function paintImageOnPanel(panel, left, top, img) {
+function paintImageOnPanel(panel, img, left, top) {
     //
     panel.layer.box.shallRepaint = true
     //
     const func = "panel.paintImage"
     //
+    assureImage("img", func, img)
+    //
     assureInteger("left", func, left)
     //
     assureInteger("top", func, top)
-    //
-    assureImage("img", func, img)
     //
     panel.context.drawImage(img, left, top)
 }
@@ -678,10 +1116,10 @@ function writeOnPanel(panel, left, top, text) {
     //
     const font = allFonts[panel.fontId]
     //
-    return displayText(panel.context, left, top, font, text)
+    return displayText(panel.context, font, left, top, text)
 }
 
-function displayText(ctx, left, top, font, text) {
+function displayText(ctx, font, left, top, text) {
     //
     for (const character of text) {
         //
@@ -694,8 +1132,129 @@ function displayText(ctx, left, top, font, text) {
 }
 
 
+// [[source/file.js]] #########################################################
+
+// # Copyright (c) 2014-2022 Feudal Code Limitada #
+
+///////////////////////////////////////////////////////////////////////////////
+
+function initLoadAndSave() {
+    //
+    createFileSelector()
+    createDownloadLink()
+    //
+    const div = document.createElement("div")
+    div.style.position = "fixed"
+    div.style.visibility = "hidden"
+    div.style.zIndex = "-999999"
+    //
+    div.appendChild(downloadLink)
+    div.appendChild(fileSelector)
+    //
+    document.body.appendChild(div)
+}
+
+function createFileSelector() {
+    fileSelector = document.createElement("input")
+    fileSelector.type = "file"
+}
+
+function createDownloadLink() {
+    downloadLink = document.createElement("a")
+    downloadLink.text = "pseudo-download-link"
+    downloadLink.target = "_blank"
+    downloadLink.href = ""
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+function loadImage(callback) {
+    //
+    if (fileSelector == null) { initLoadAndSave() }
+    //
+    fileSelector.value = "" // or else same file will not trigger onchange event again
+    //
+    fileSelector.onchange = function () { fileSelectorImageChanged(callback) }
+    //
+    clickHtmlElement(fileSelector)
+}
+
+function fileSelectorImageChanged(callback) {
+    //
+    const file = fileSelector.files[0]
+    //
+    if (file == undefined) { console.log("image loading aborted"); return } // should not happen
+    //
+    console.log("loading:", file.type, "  ", file.name, "  bytes:", file.size)
+    //
+    const kind = getFileNameExtension(file.name)
+    if (kind == null) { console.log("ERROR: file name extension is not valid:", file.name); return }
+    //
+    const reader = new FileReader()
+    reader.onloadend = function (e) { readerEndedLoadingImage(file.name, e.target.result, callback) }
+    reader.readAsDataURL(file)
+}
+
+function readerEndedLoadingImage(__filename, data, callback) {
+    //
+    const img = document.createElement("img")
+    img.onload = function () { callback(img) }
+    img.src = data
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+function getFileNameExtension(name) {
+    const index = name.lastIndexOf(".")
+    if (index == -1) { return null }
+    //
+    const end = name.toLowerCase().substr(index)
+    if (end == ".bmp")  { return "bmp" }
+    if (end == ".png")  { return "png" }
+    if (end == ".svg")  { return "svg" }
+    if (end == ".jpg")  { return "jpg" }
+    if (end == ".ico")  { return "ico" }
+    if (end == ".gif")  { return "gif" }
+    if (end == ".jpeg") { return "jpeg" }
+    if (end == ".webp") { return "webp" }
+    //
+    return null
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+function saveImage(filename, image) {
+    //
+    if (downloadLink == null) { initLoadAndSave() }
+    //
+    const func = "goodbye.saveImage"
+    //
+    assureNonEmptyString("filename", func, filename)
+    //
+    assureImage(func, "image", image)
+    //
+    downloadLink.download = filename // pseudo download
+    //
+    const data = cloneImage(image).toDataURL("image/png")
+    //
+    downloadLink.href = data
+    clickHtmlElement(downloadLink)
+}
+
+
 // [[source/helper.js]] #######################################################
 
+
+///////////////////////////////////////////////////////////////////////////////
+
+function clickHtmlElement(element) {
+    // Firefox (and Edge) does not click link that is not body's child
+    const e = document.createEvent("MouseEvents")
+    e.initEvent("click", true, true) // event type, can bubble?,  cancelable?
+    element.dispatchEvent(e)
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -791,6 +1350,17 @@ function isSolidColor(color) {
 
 function solidReversedColor(color) {
     //
+    const data = rgbFromColor(color)
+    //
+    const r = 255 - data[0]
+    const g = 255 - data[1]
+    const b = 255 - data[2]
+    //
+    return "rgb(" + r + "," + g + "," + b + ")"
+}
+
+function rgbFromColor(color) {
+    //
     const cnv = createCanvas(1, 1)
     const ctx = cnv.getContext("2d")
     //
@@ -799,11 +1369,64 @@ function solidReversedColor(color) {
     //
     const data = ctx.getImageData(0, 0, 1, 1).data
     //
-    const r = 255 - data[0]
-    const g = 255 - data[1]
-    const b = 255 - data[2]
+    const r = data[0]
+    const g = data[1]
+    const b = data[2]
     //
-    return "rgb(" + r + "," + g + "," + b + ")"
+    return [r, g, b]
+}
+
+function getGrey(r, g, b) {
+    let grey = Math.round(r * 0.299 + g * 0.587 + b * 0.114)
+    if (grey > 255) { grey = 255 }
+    //
+    return grey
+}
+
+function getGreyFromString(color) {
+    //
+    const rgb = rgbFromColor(color)
+    //
+    return getGrey(rgb[0], rgb[1], rgb[2])
+}
+
+function fadeColor(color, alpha) {
+    //
+    const rgb = rgbFromColor(color)
+    //
+    return "rgba(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + "," + alpha + ")"
+}
+
+
+// [[source/keyboard.js]] #####################################################
+
+// # Copyright (c) 2014-2022 Feudal Code Limitada #
+
+function keyDownHandler(box, e) {
+    //
+    const low = e.key.toLowerCase()
+ // console.log(low)
+    //
+    if (low == "f5")  { return true }
+    if (low == "f11") { return true }
+    if (low == "f12") { return true }
+    if (low == "tab") { return true }
+    //
+    if (low == "-"  &&  e.ctrlKey) { return true }
+    if (low == "+"  &&  e.ctrlKey) { return true }
+    if (low == "="  &&  e.ctrlKey) { return true }
+    if (low == "j"  &&  e.ctrlKey  &&  e.shiftKey) { return true }
+    if (low == "u"  &&  e.ctrlKey) { return true }
+    //
+    if (box.focusedWidget != null) {
+        //
+        if (box.focusedWidget.onkeydown) { box.focusedWidget.onkeydown(e) }
+    }
+    //
+    e.preventDefault()
+    e.stopPropagation()
+    //
+    return false // should not happen
 }
 
 
@@ -848,7 +1471,11 @@ function createLayerUserObj(box, layer) {
     //
     obj["hide"] = function () { layer.visible = false; box.shallRepaint = true }
     //
-    obj["visible"] = function () { return layer.visible }
+    obj["moveUp"] = function () { moveLayer(box, layer, +1) }
+    //
+    obj["moveDown"] = function () { moveLayer(box, layer, -1) }
+    //
+    obj["getVisible"] = function () { return layer.visible }
     //
     obj["createPanel"] = function (name, left, top, width, height, bgColor) {
         //
@@ -860,7 +1487,6 @@ function createLayerUserObj(box, layer) {
     Object.freeze(obj)
     return obj
 }
-
 
 /////////////////////////////////////////////////////////////////////////////////
 
@@ -885,6 +1511,36 @@ function initLayers(box, names) {
     }
 }
 
+///////////////////////////////////////////////////////////////////////////////
+
+function orderOfLayers(box) {
+    //
+    const order = [ ]
+    //
+    for (const layer of box.layers) { order.push(layer.id) }
+    //
+    return order
+}
+
+/////////////////////////////////////////////////////////////////////////////////
+
+function moveLayer(box, layer, delta) {
+    //
+    box.shallRepaint = true
+    //
+    const index = box.layers.indexOf(layer)
+    //
+    const newIndex = index + delta
+    //
+    if (newIndex < 0  ||  newIndex >= box.layers.length) { return }
+    //
+    const a = layer
+    const b = box.layers[newIndex]
+    //
+    box.layers[index] = b
+    box.layers[newIndex] = a
+}
+
 
 // [[source/loader.js]] #######################################################
 
@@ -896,7 +1552,7 @@ function createLoader() {
     const loader = {
         //
         "loadFont": loadFont,
-        "loadImage": loadImage,
+        "loadImage": loaderLoadImage,
         "ready": setLoaderCallback
     }
     //
@@ -908,6 +1564,7 @@ function createLoader() {
 function setLoaderCallback(callback) {
     //
     if (typeof callback != "function") {
+        //
         throw "-- wrong argument callback for function loader.ready, got: " + callback
     }
     //
@@ -923,7 +1580,7 @@ function loaderDone(callback) {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-function loadImage(id, src) {
+function loaderLoadImage(id, src) {
     //
     assureFreeId("id", "loader.loadImage", id, allImages)
     //
@@ -1152,7 +1809,7 @@ function stageOnMouseMove(box, e) {
     box.lastWidgetUnderMouse = widget
     //
     //
-    if (dragging  &&  widget != last) { box.focusedWidget = null }
+    if (dragging  &&  widget != last) { resetFocus(box) }
     //
     //
     if (widget == null  &&  last == null) { return }
@@ -1196,7 +1853,10 @@ function stageOnMouseDown(box, e) {
     //
     box.lastWidgetUnderMouse = widget
     //
-    box.focusedWidget = widget
+    if (widget != box.focusedWidget) { // avoiding resetting cursor position in textbox
+        resetFocus(box)
+        setFocus(box, widget)
+    }
     //
     if (widget == null) { return }
     //
@@ -1343,6 +2003,13 @@ function tryOnMouseUp(widget, x, y) {
 // [[source/panel.js]] ########################################################
 
 
+/*
+ *
+ *   bgColor of panel is NOT painted on it, it is painted direclty on stage;
+ *   changing the bgColor of the panel has NO effet onwhat is painted on it
+ *
+ */
+
 ///////////////////////////////////////////////////////////////////////////////
 
 function Panel(layer, id, left, top, width, height, bgColor) {
@@ -1356,16 +2023,16 @@ function Panel(layer, id, left, top, width, height, bgColor) {
     this.width = width
     this.height = height
     //
+    this.fontId = null
+    //
+    this.widgets = [ ]
+    //
     this.visible = true
     //
     this.bgColor = bgColor
     //
     this.canvas = createCanvas(width, height)
     this.context = this.canvas.getContext("2d")
-    //
-    this.fontId = null
-    //
-    this.widgets = [ ]
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1392,8 +2059,6 @@ function createPanel(layer, name, left, top, width, height, bgColor) {
     //
     assureMinimumInteger("height", func, height, 1)
     //
-    if (bgColor === null) { bgColor = "transparent" }
-    //
     assureColor("bgColor", func, bgColor)
     //
     const panel = new Panel(layer, id, left, top, width, height, bgColor)
@@ -1416,8 +2081,10 @@ function createPanelUserObj(panel) {
     //
     const obj = { }
     //
-    obj["hide"] = function () { hidePanel(panel) }
-    obj["show"] = function () { showPanel(panel) }
+    obj["hide"] = function () { panel.visible = false; panel.layer.box.shallRepaint = true }
+    obj["show"] = function () { panel.visible = true; panel.layer.box.shallRepaint = true }
+    //
+    obj["getVisible"] = function () { return panel.visible }
     //
     obj["write"] = function (left, top, txt) { return writeOnPanel(panel, left, top, txt) }
     //
@@ -1433,7 +2100,7 @@ function createPanelUserObj(panel) {
         paintRectOnPanel(panel, left, top, width, height, color)
     }
     //
-    obj["paintImage"] = function (left, top, img) { paintImageOnPanel(panel, left, top, img) }
+    obj["paintImage"] = function (img, left, top) { paintImageOnPanel(panel, img, left, top) }
     //
     obj["setBgColor"] = function (color) { setPanelBgColor(panel, color) }
     //
@@ -1447,7 +2114,20 @@ function createPanelUserObj(panel) {
         return createSurface(panel, name, left, top, width, height, bgColor)
     }
     //
-    obj["visible"] = function () { return panel.visible }
+    obj["createSlider"] = function (name, left, top, width, height, bgColor, dark) {
+        //
+        return createSlider(panel, name, left, top, width, height, bgColor, dark)
+    }
+    //
+    obj["createCheckbox"] = function (name, left, top, dimension, checked, onclick) {
+        //
+        return createCheckbox(panel, name, left, top, dimension, checked, onclick)
+    }
+    //
+    obj["createTextbox"] = function (name, left, top, width, height, length, fontId, isRightStart) {
+        //
+        return createTextbox(panel, name, left, top, width, height, length, fontId, isRightStart)
+    }
     //
     obj["log"] = function () { console.log(panel) }
     //
@@ -1490,21 +2170,21 @@ function setPanelBgColor(panel, color) {
     //
     panel.bgColor = color
     //
+    resetAndRepaintSomePanelWidgets(panel)
+    //
     panel.layer.box.shallRepaint = true
 }
 
-///////////////////////////////////////////////////////////////////////////////
-
-function hidePanel(panel) {
+function resetAndRepaintSomePanelWidgets(panel) {
     //
-    panel.visible = false
-    panel.layer.box.shallRepaint = true
-}
-
-function showPanel(panel) {
-    //
-    panel.visible = true
-    panel.layer.box.shallRepaint = true
+    for (const widget of panel.widgets) {
+        //
+        if (widget.kind == "slider") { setSliderImages(widget); continue }
+        //
+        if (widget.kind == "textbox") { paintTextbox(widget); continue }
+        //
+        if (widget.kind == "checkbox") { setCheckboxImages(widget); continue }
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1542,20 +2222,338 @@ function assurePanelDoesntClash(panel) {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-function paintPanelUnderWidget(widget, color) {
+function clearPanelUnderWidget(widget) {
     //
     const panel = widget.panel
     //
     panel.layer.box.shallRepaint = true
     //
     panel.context.clearRect(widget.left, widget.top, widget.width, widget.height)
+}
+
+
+// [[source/slider.js]] #######################################################
+
+
+// height of slider is always 30
+
+///////////////////////////////////////////////////////////////////////////////
+
+function Slider(panel, id, left, top, width, height, value) {
     //
-    if (color) {
-        //
-        panel.context.fillStyle = color
-        //
-        panel.context.fillRect(widget.left, widget.top, widget.width, widget.height)
+    this.panel = panel
+    //
+    this.kind = "slider"
+    //
+    this.id = id
+    //
+    this.left = left
+    this.top = top
+    this.width = width
+    this.height = height
+    //
+    this.value = value
+    //
+    this.visible = true
+    //
+    this.disabled = false
+    //
+    this.cursor = null
+    this.baseImage = null
+    this.fadeCover = null
+    //
+    this.onmousedown = function (x, y) { inputOnSlider(this, x, y) }
+    this.onmousemove = function (x, y, dragging) { sliderOnMouseMove(this, x, y, dragging) }
+    this.onchange = null
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+function createSlider(panel, name, left, top, width, height, value) {
+    //
+    const box = panel.layer.box
+    //
+    box.shallRepaint = true
+    //
+    const func = "panel.createSlider"
+    //
+    assureName("name", func, name)
+    //
+    const id = panel.id + "." + name
+    //
+    assureFreeId("name", func, id, box.elements)
+    //
+    assureMinimumInteger("left", func, left, 0)
+    //
+    assureMinimumInteger("top", func, top, 0)
+    //
+    assureMinimumInteger("width", func, width, 30)
+    //
+    assureThisInteger("height", func, height, 30)
+    //
+    assureProportion("value", func, value)
+    //
+    const slider = new Slider(panel, id, left, top, width, 30, value)
+    //
+    Object.seal(slider)
+    //
+    setSliderImages(slider)
+    //
+    assureWidgetFitsInPanel(slider)
+    assureWidgetDoesntClash(slider)
+    //
+    panel.widgets.push(slider)
+    //
+    box.elements[id] = createSliderUserObj(slider)
+    //
+    paintSlider(slider)
+    //
+    return box.elements[id]
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+function createSliderUserObj(slider) {
+    //
+    const obj = { }
+    //
+    obj["hide"] = function () { slider.visible = false; paintSlider(slider) }
+    obj["show"] = function () { slider.visible = true; paintSlider(slider) }
+    //
+    obj["getVisible"] = function () { return slider.visible }
+    //
+    obj["getValue"] = function () { return slider.value }
+    //
+    obj["reset"] = function (val) { resetSlider(slider, val) }
+    //
+    obj["enable"] = function () { slider.disabled = false; paintSlider(slider) }
+    //
+    obj["disable"] = function () { slider.disabled = true; paintSlider(slider) }
+    //
+    obj["getDisabled"] = function () { return slider.disabled }
+    //
+    obj["setOnChange"] = function (handler) { setSliderOnChange(slider, handler) }
+    //
+    obj["log"] = function () { console.log(slider) }
+    //
+    Object.freeze(obj)
+    return obj
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+function setSliderImages(slider) {
+    //
+    const bgColor = slider.panel.bgColor
+    //
+    const grey = getGreyFromString(bgColor)
+    //
+    const dark = grey < 160
+    //
+    slider.cursor = createSliderCursor(bgColor, dark)
+    slider.baseImage = createSliderBar(slider.width, bgColor, dark)
+    slider.fadeCover = createColorCanvas(slider.width, slider.height, fadeColor(bgColor, 0.7))
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+function paintSlider(slider) {
+    //
+    clearPanelUnderWidget(slider)
+    //
+    if (! slider.visible) { return }
+    //
+    const ctx = slider.panel.context
+    //
+    slider.panel.layer.box.shallRepaint = true
+    //
+    ctx.drawImage(slider.baseImage, slider.left, slider.top)
+    //
+    const top = slider.top + 5
+    const left = sliderCursorLeft(slider)
+    //
+    ctx.drawImage(slider.cursor, left, top)
+    //
+    if (slider.disabled) { ctx.drawImage(slider.fadeCover, slider.left, slider.top) }
+}
+
+function sliderCursorLeft(slider) {
+    //
+    const logicalWidth = slider.width - 20
+    //
+    const logicalLeft = Math.round(slider.value * logicalWidth)
+    //
+    return slider.left + 10 + logicalLeft - 10 // +10: visible bar displacement; -10: half cursor width
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+function resetSlider(slider, value) {
+    //
+    const param = "value"
+    const func = "slider.reset"
+    //
+    assureProportion(param, func, value)
+    //
+    slider.value = value
+    //
+    paintSlider(slider)
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+function sliderOnMouseMove(slider, x, y, dragging) {
+    //
+    if (! dragging) { return }
+    //
+    inputOnSlider(slider, x, y)
+}
+
+function inputOnSlider(slider, x, __y) {
+    //
+    if (slider.disabled) { return }
+    //
+    const adjustedX = x - 10 // -10: visible bar displacement
+    //
+    const logicalWidth = slider.width - 20
+    //
+    slider.value = adjustedX / logicalWidth
+    //
+    if (slider.value < 0) { slider.value = 0 }
+    if (slider.value > 1) { slider.value = 1 }
+    //
+    paintSlider(slider)
+    //
+    if (slider.onchange != null) { slider.onchange(slider) }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+function setSliderOnChange(slider, handler) {
+    //
+    assureNullOrFunction("handler", "slider.setOnChange", handler)
+    //
+    slider.onchange = handler
+}
+
+
+// [[source/slider-parts.js]] #################################################
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+
+function createSliderCursor(bgColor, dark) {
+    //
+    const cnv = createCanvas(20, 20)
+    const ctx = cnv.getContext("2d")
+    //
+    ctx.fillStyle = dark ? bgColor : "rgb(90,90,90)"
+    ctx.beginPath()
+    ctx.arc(10, 10, 9, 0, 2 * Math.PI);
+    ctx.fill()
+    //
+    ctx.fillStyle = dark ? "silver" : bgColor
+    ctx.beginPath()
+    ctx.arc(10, 10, 7, 0, 2 * Math.PI);
+    ctx.fill()
+    //
+    return cnv
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+function createSliderBar(width, bgColor, dark) {
+    //
+    const cnv = createCanvas(width, 30)
+    const ctx = cnv.getContext("2d")
+    //
+    ctx.fillStyle = bgColor
+    ctx.fillRect(0, 0, width, 30)
+    //
+    const core = createSliderBarCore(width - 20, bgColor, dark) // reserving space for cursor at ends
+    ctx.drawImage(core, 10, 5)
+    //
+    return cnv
+}
+
+function createSliderBarCore(width, bgColor, dark) {
+    //
+    const cnv = createCanvas(width, 20)
+    const ctx = cnv.getContext("2d")
+    //
+    ctx.fillStyle = dark ? "rgb(170,170,180)" : "dimgrey"
+    ctx.fillRect(0,  7, width, 2)
+    ctx.fillRect(0, 11, width, 2)
+    //
+    ctx.drawImage(sliderLeftBeacon(bgColor, dark), 0, 7)
+    ctx.drawImage(sliderRightBeacon(bgColor, dark), width-3, 7)
+    //
+    if (dark) { ctx.fillRect(2, 9, width-4, 2) }
+    //
+    return cnv
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+function sliderLeftBeacon(bgColor, dark) {
+    //
+    if (dark) {
+        return sliderBeacon([0,135,138, 135,172,172, 168,172,172], bgColor, dark)
     }
+    //
+    return sliderBeacon([0,141,109, 141,105,105, 109,105,170], bgColor, dark)
+}
+
+function sliderRightBeacon(bgColor, dark) {
+    //
+    const src = sliderLeftBeacon(bgColor, dark)
+    const cnv = createCanvas(src.width, src.height)
+    const ctx = cnv.getContext("2d")
+    //
+    ctx.save()
+    ctx.scale(-1, 1)
+    ctx.drawImage(src, 0, 0, src.width * -1, src.height)
+    ctx.restore()
+    //
+    return cnv
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+function sliderBeacon(hints, bgColor) {
+    const cnv = createCanvas(3, 6)
+    const ctx = cnv.getContext("2d")
+    //
+    const colors = [ ]
+    for (const hint of hints) { colors.push(colorFromHint(hint, bgColor)) }
+    // top part
+    for (let y = 0; y < 3; y ++) {
+        for (let x = 0; x < 3; x ++) {
+            const index = (y * 3) + x
+            const color = colors[index]
+            ctx.fillStyle = color
+            ctx.fillRect(x, y, 1, 1)
+        }
+    }
+    // bottom part
+    for (let y = 0; y < 3; y ++) {
+        for (let x = 0; x < 3; x ++) {
+            const index = (y * 3) + x
+            const color = colors[index]
+            ctx.fillStyle = color
+            ctx.fillRect(x, (5-y), 1, 1)
+        }
+    }
+    //
+    return cnv
+}
+
+function colorFromHint(hint, bgColor) {
+    if (hint == 0) { return bgColor }
+    //
+    return "rgb(" + hint + "," + hint + "," + hint + ")"
 }
 
 
@@ -1586,8 +2584,6 @@ function createStage(box) {
 ///////////////////////////////////////////////////////////////////////////////
 
 function setStageBgColor(box, color) {
-    //
-    if (color === null) { color = "transparent" }
     //
     assureColor("color", "box.setBgColor", color)
     //
@@ -1673,8 +2669,6 @@ function createSurface(panel, name, left, top, width, height, bgColor) {
     //
     assureMinimumInteger("height", func, height, 1)
     //
-    if (bgColor === null) { bgColor = "transparent" }
-    //
     assureColor("bgColor", func, bgColor)
     //
     const surface = new Surface(panel, id, left, top, width, height, bgColor)
@@ -1699,8 +2693,10 @@ function createSurfaceUserObj(surface) {
     //
     const obj = { }
     //
-    obj["hide"] = function () { hideSurface(surface) }
-    obj["show"] = function () { showSurface(surface) }
+    obj["hide"] = function () { surface.visible = false; paintSurface(surface) }
+    obj["show"] = function () { surface.visible = true; paintSurface(surface) }
+    //
+    obj["getVisible"] = function () { return surface.visible }
     //
     obj["setImage"] = function (img) { setSurfaceImage(surface, img) }
     //
@@ -1712,8 +2708,6 @@ function createSurfaceUserObj(surface) {
     obj["setOnMouseEnter"] = function (h) { setSurfaceOnMouseEnter(surface, h) }
     obj["setOnMouseLeave"] = function (h) { setSurfaceOnMouseLeave(surface, h) }
     //
-    obj["visible"] = function () { return surface.visible }
-    //
     obj["log"] = function () { console.log(surface) }
     //
     Object.freeze(obj)
@@ -1724,9 +2718,9 @@ function createSurfaceUserObj(surface) {
 
 function paintSurface(surface) {
     //
-    if (! surface.visible) { paintPanelUnderWidget(surface, null); return }
+    clearPanelUnderWidget(surface)
     //
-    paintPanelUnderWidget(surface, surface.bgColor)
+    if (! surface.visible) { return }
     //
     surface.panel.context.drawImage(surface.canvas, surface.left, surface.top)
 }
@@ -1735,26 +2729,10 @@ function paintSurface(surface) {
 
 function setSurfaceBgColor(surface, color) {
     //
-    if (color === null) { color = "transparent" }
-    //
     assureColor("color", "surface.setBgColor", color)
     //
     surface.bgColor = color
     //
-    paintSurface(surface)
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
-function hideSurface(surface) {
-    //
-    surface.visible = false
-    paintSurface(surface)
-}
-
-function showSurface(surface) {
-    //
-    surface.visible = true
     paintSurface(surface)
 }
 
@@ -1809,14 +2787,560 @@ function setSurfaceOnMouseUp(surface, handler) {
 }
 
 
+// [[source/textbox.js]] ######################################################
+
+
+// textbox action is triggered by input
+
+///////////////////////////////////////////////////////////////////////////////
+
+function Textbox(panel, id, left, top, width, height, length, fontId, isRightStart) {
+    //
+    this.panel = panel
+    //
+    this.kind = "textbox"
+    //
+    this.id = id
+    //
+    this.left = left
+    this.top = top
+    this.width = width
+    this.height = height
+    //
+    this.length = length // max number of characters
+    this.text = ""
+    this.fontId = fontId
+    //
+    this.visible = true
+    //
+    this.disabled = false
+    //
+    this.canvas = createCanvas(width, height)
+    this.context = this.canvas.getContext("2d")
+    //
+    this.isRightStart = isRightStart
+    //
+    this.textTop = 0 // for text and cursor
+    this.redCursor = null
+    this.blankCursor = null
+    this.sprites = null
+    //
+    // comes before the character (real or future) it refers; min value is zero; max value is length
+    //
+    this.cursorPosition = 0
+    //
+    this.onkeydown = function (e) { textboxOnKeyDown(this, e) }
+    this.onmousedown = function (x, y) { textboxOnMouseDown(this, x, y) }
+    //
+    this.onchange = null
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+function createTextbox(panel, name, left, top, width, height, length, fontId, isRightStart) {
+    //
+    const box = panel.layer.box
+    //
+    box.shallRepaint = true
+    //
+    const func = "panel.createTextbox"
+    //
+    assureName("name", func, name)
+    //
+    const id = panel.id + "." + name
+    //
+    assureFreeId("name", func, id, box.elements)
+    //
+    assureMinimumInteger("left", func, left, 0)
+    //
+    assureMinimumInteger("top", func, top, 0)
+    //
+    assureMinimumInteger("width", func, width, 10)
+    //
+    assureMinimumInteger("height", func, height, 10)
+    //
+    assureMinimumInteger("length", func, length, 1)
+    //
+    assureGoodId("fontId", func, fontId, allFonts)
+    //
+    assureBoolean("isRightStart", func, isRightStart)
+    //
+    const textbox = new Textbox(panel, id, left, top, width, height, length, fontId, isRightStart)
+    //
+    Object.seal(textbox)
+    //
+    setTextTopAndCursors(textbox)
+    //
+    assureWidgetFitsInPanel(textbox)
+    assureWidgetDoesntClash(textbox)
+    //
+    panel.widgets.push(textbox)
+    //
+    box.elements[id] = createTextboxUserObj(textbox)
+    //
+    paintTextbox(textbox)
+    //
+    return box.elements[id]
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+function createTextboxUserObj(textbox) {
+    //
+    const obj = { }
+    //
+    obj["hide"] = function () { textbox.visible = false; paintTextbox(textbox) }
+    obj["show"] = function () { textbox.visible = true; paintTextbox(textbox) }
+    //
+    obj["getVisible"] = function () { return textbox.visible }
+    //
+    obj["enable"] = function () { textbox.disabled = false; paintTextbox(textbox) }
+    obj["disable"] = function () { textbox.disabled = true; paintTextbox(textbox) }
+    //
+    obj["getDisabled"] = function () { return textbox.disabled }
+    //
+    obj["setText"] = function (text) { setTextboxText(textbox, text) }
+    //
+    obj["getText"] = function () { return textbox.text }
+    //
+    obj["setOnChange"] = function (onchange) { setTextboxOnChange(textbox, onchange) }
+    //
+    obj["log"] = function () { console.log(textbox) }
+    //
+    Object.freeze(obj)
+    return obj
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+function setTextTopAndCursors(textbox) {
+    //
+    const font = allFonts[textbox.fontId]
+    //
+    const height = font["."].height
+    //
+    textbox.blankCursor = createCanvas(3, height)
+    //
+    textbox.redCursor = createColorCanvas(3, height, "red")
+    const ctx = textbox.redCursor.getContext("2d")
+    ctx.clearRect (0, 0, 3, 4)
+    ctx.clearRect (0, height - 4, 3, 4)
+    //
+    const innerHeight = textbox.height - 2
+    const restV = innerHeight - height
+    //
+    textbox.textTop = Math.floor(restV / 2) + 1 // +1 for the top border (outside innerHeight)
+}
+
+
+// [[source/textbox-action.js]] ###############################################
+
+
+///////////////////////////////////////////////////////////////////////////////
+
+function setTextboxText(textbox, text) {
+    //
+    assureString("text", "textbox.setText", text)
+    //
+    if (text.length > textbox.length) { argError("text", "textbox.setText", "too big text: " + text) }
+    //
+    const font = allFonts[textbox.fontId]
+    //
+    for (const c of text) {
+        //
+        if (font[c] == undefined) {  argError("text", "textbox.setText", "font doesn't have character: " + c) }
+    }
+    //
+    textbox.text = text
+    //
+    textbox.cursorPosition = textbox.isRightStart ? text.length : 0
+    //
+    paintTextbox(textbox)
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+function setTextboxOnChange(textbox, handler) {
+    //
+    assureNullOrFunction("handler", "textbox.setOnChange", handler)
+    //
+    textbox.onchange = handler
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+function textboxOnMouseDown(textbox, x) {
+    //
+    textbox.cursorPosition = textboxIndexOnMouseDown(textbox, x)
+    //
+    startBlinking(textbox)
+}
+
+function textboxIndexOnMouseDown(textbox, x) {
+    //
+    const sprites = textbox.sprites
+    //
+    for (const sprite of sprites) {
+        //
+        if (x > sprite.right) { continue }
+        //
+        const center = sprite.left + (0.5 * sprite.width)
+        //
+        if (x <= center) { return sprite.order }
+        //
+        return sprite.order + 1
+    }
+    //
+    return textbox.isRightStart ? 0 : textbox.text.length
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+function textboxOnKeyDown(textbox, e) {
+    //
+    if (e.ctrlKey) { return }
+    //
+    const original = textbox.text
+    //
+    const changed = processSpecialKeyDownOnTextbox(textbox, e)
+    //
+    if (changed) {
+        //
+        paintTextbox(textbox)
+        //
+        if (textbox.onchange) { textbox.onchange(original, textbox.text) }
+        return
+    }
+    //
+    //
+    const font = allFonts[textbox.fontId]
+    //
+    if (font[e.key] == undefined) { return }
+    //
+    if (textbox.text.length == textbox.length) { return }
+    //
+    const list = textbox.text.split("")
+    list.splice(textbox.cursorPosition, 0, e.key)
+    textbox.text = list.join("")
+    textbox.cursorPosition += 1
+    //
+    paintTextbox(textbox)
+    //
+    if (textbox.onchange) { textbox.onchange(original, textbox.text) }
+}
+
+function processSpecialKeyDownOnTextbox(textbox, e) {
+    //
+    const low = e.key.toLowerCase()
+    //
+    const minpos = 0
+    const maxpos = textbox.text.length
+    //
+    if (low == "arrowleft") {
+        //
+        if (textbox.cursorPosition == minpos) { return false }
+        //
+        textbox.cursorPosition -= 1
+        return true
+    }
+    //
+    if (low == "arrowright") {
+        //
+        if (textbox.cursorPosition == maxpos) { return false }
+        //
+        textbox.cursorPosition += 1
+        return true
+    }
+    //
+    if (low == "home") {
+        //
+        if (textbox.cursorPosition == minpos) { return false }
+        //
+        textbox.cursorPosition = minpos
+        return true
+    }
+    //
+    if (low == "end")  {
+        //
+        if (textbox.cursorPosition == maxpos) { return false }
+        //
+        textbox.cursorPosition = maxpos
+        return true
+    }
+    //
+    if (low == "delete") {
+        //
+        if (textbox.cursorPosition == maxpos) { return false } // no digit ahead
+        //
+        const dellist = textbox.text.split("")
+        dellist.splice(textbox.cursorPosition, 1)
+        textbox.text = dellist.join("")
+        return  true
+    }
+    //
+    if (low == "backspace") {
+        //
+        if (textbox.cursorPosition == minpos) { return false } // no digit ahead
+        //
+        const dellist = textbox.text.split("")
+        dellist.splice(textbox.cursorPosition - 1, 1)
+        textbox.text = dellist.join("")
+        textbox.cursorPosition -= 1
+        return  true
+    }
+}
+
+
+// [[source/textbox-paint.js]] ################################################
+
+
+/////////////////////////////////////////////////////////////////////////////////
+
+function paintTextbox(textbox) {
+    //
+    clearPanelUnderWidget(textbox)
+    //
+    if (! textbox.visible) { return }
+    //
+    const width = textbox.width
+    //
+    const height = textbox.height
+    //
+    const ctx = textbox.context
+    //
+    const grey = getGreyFromString(textbox.panel.bgColor)
+    //
+    const dark = grey < 60
+    //
+    ctx.fillStyle = "white"
+    ctx.fillRect(0, 0, width, height)
+    //
+    if (textbox.isRightStart) {
+        paintTextInTextboxRightStart(textbox)
+    }
+    else {
+        paintTextInTextboxLeftStart(textbox)
+    }
+    //
+    ctx.fillStyle = dark ? "grey" : "black"
+    ctx.fillRect(0, 0, width, 1) // top
+    ctx.fillRect(0, height-1, width, 1) // bottom
+    ctx.fillRect(0, 0, 1, height) // left
+    ctx.fillRect(width-1, 0, 1, height) // right
+    //
+    if (textbox.disabled) {
+        //
+        ctx.fillStyle = "rgba(0,0,0,0.5)"
+        ctx.fillRect(1, 1, width-2, height-2)
+    }
+    //
+    textbox.panel.context.drawImage(textbox.canvas, textbox.left, textbox.top)
+}
+
+//////////////////////////////////////////////////////////////////////////////
+
+function paintTextInTextboxLeftStart(textbox) {
+    //
+    const box = textbox.panel.layer.box
+    //
+    const sprites = spritesForTextboxPainting(box, textbox)
+    //
+    while (cursorIsBeyondEnd(box, textbox, sprites)) { sprites.shift() }
+    //
+    let left = 5
+    //
+    for (const sprite of sprites) {
+        //
+        textbox.context.drawImage(sprite.image, left, textbox.textTop)
+        //
+        sprite.left = left
+        sprite.right = left + sprite.width
+        //
+        left += sprite.width + 1 // +1 as spacer
+    }
+    //
+    textbox.sprites = sprites
+}
+
+function cursorIsBeyondEnd(box, textbox, sprites) {
+    //
+    if (textbox != box.focusedWidget) { return false }
+    //
+    let left = 0
+    //
+    const max = textbox.width - 15 // two borders + blank space
+    //
+    for (const sprite of sprites) {
+        //
+        if (left > max) { break }
+        //
+        if (sprite.symbol == "cursor") { return false }
+        //
+        left += sprite.width + 1 // +1 as spacer
+    }
+    //
+    return true
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+function paintTextInTextboxRightStart(textbox) {
+    //
+    const box = textbox.panel.layer.box
+    //
+    const sprites = spritesForTextboxPainting(box, textbox)
+    //
+    while (cursorIsBeyondStart(box, textbox, sprites)) { sprites.pop() }
+    //
+    let left = textbox.width - 4
+    //
+    const max = sprites.length - 1
+    //
+    for (let n = max; n > -1; n--) {
+        //
+        const sprite = sprites[n]
+        //
+        left -= sprite.width + 1 // +1 as spacer
+        //
+        sprite.left = left
+        sprite.right = left + sprite.width
+        //
+        textbox.context.drawImage(sprite.image, left, textbox.textTop)
+    }
+    //
+    textbox.sprites = sprites
+}
+
+function cursorIsBeyondStart(box, textbox, sprites) {
+    //
+    if (textbox != box.focusedWidget) { return false }
+    //
+    let left = textbox.width - 15 // two borders + blank space
+    //
+    const max = sprites.length - 1
+    //
+    for (let n = max; n > -1; n--) {
+        //
+        const sprite = sprites[n]
+        //
+        left -= sprite.width + 1 // +1 as spacer
+        //
+        if (left < 0) { break }
+        //
+        if (sprite.symbol == "cursor") { return false }
+    }
+    //
+    return true
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+function TextboxSprite(order, symbol, image) {
+    //
+    this.order = order
+    this.symbol = symbol
+    this.image = image
+    this.left = 0
+    this.right = 0
+    this.width = image.width
+}
+
+function createTextboxSprite(order, symbol, image) {
+    //
+    const obj = new TextboxSprite(order, symbol, image)
+    Object.seal(image)
+    return obj
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+function spritesForTextboxPainting(box, textbox) {
+    //
+    const font = allFonts[textbox.fontId]
+    //
+    const symbols = textbox.text.split("")
+    //
+    const sprites = [ ]
+    //
+    for (let n = 0; n < symbols.length; n++) {
+        //
+        maybeInsertCursor(box, textbox, sprites, n)
+        //
+        const symbol = symbols[n]
+        const sprite = createTextboxSprite(n, symbol, font[symbol])
+        sprites.push(sprite)
+    }
+    //
+    maybeInsertCursor(box, textbox, sprites, symbols.length)
+    //
+    return sprites
+}
+
+function maybeInsertCursor(box, textbox, sprites, n) {
+    //
+    if (textbox != box.focusedWidget) { return }
+    //
+    if (n != textbox.cursorPosition) { return }
+    //
+    const img = box.blinking ? textbox.redCursor : textbox.blankCursor
+    //
+    const cursor = createTextboxSprite(n, "cursor", img)
+    //
+    sprites.push(cursor)
+}
+
+
 // [[source/utils.js]] ########################################################
 
 
 ///////////////////////////////////////////////////////////////////////////////
 
-function createLabelUser(fontId, bgColor, padLeft, padRight, padTop, padBottom, text) {
+function createLabelUser(fontId, bgColor, width, height, text) {
     //
     const func = "library.createLabel"
+    //
+    assureGoodId("fontId", func, fontId, allFonts)
+    //
+    assureColor("bgColor", func, bgColor)
+    //
+    assureMinimumInteger("width", func, width, 3)
+    //
+    assureMinimumInteger("height", func, height, 3)
+    //
+    assureString("text", func, text)
+    //
+    return createLabel(fontId, bgColor, width, height, text)
+}
+
+function createLabel(fontId, bgColor, width, height, text) {
+    //
+    const font = allFonts[fontId]
+    //
+    const symbol = (text == "") ? "." : text[0]
+    const sample = font[symbol]
+    //
+    const cnv = createColorCanvas(width, height, bgColor)
+    const ctx = cnv.getContext("2d")
+    //
+    const restH = width - calcTextLength(fontId, text)
+    const left = Math.floor(restH / 2)
+    //
+    const restV = height - (sample.height)
+    const top = 2 + Math.floor(restV / 2)
+    //
+    displayText(ctx, font, left, top, text)
+    //
+    return cnv
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+function createPadLabelUser(fontId, bgColor, padLeft, padRight, padTop, padBottom, text) {
+    //
+    const func = "library.createPadLabel"
     //
     assureGoodId("fontId", func, fontId, allFonts)
     //
@@ -1830,16 +3354,17 @@ function createLabelUser(fontId, bgColor, padLeft, padRight, padTop, padBottom, 
     //
     assureMinimumInteger("padBottom", func, padBottom, 0)
     //
-    assureNonEmptyString("text", func, text)
+    assureString("text", func, text)
     //
-    return createLabel(fontId, bgColor, padLeft, padRight, padTop, padBottom, text)
+    return createPadLabel(fontId, bgColor, padLeft, padRight, padTop, padBottom, text)
 }
 
-function createLabel(fontId, bgColor, padLeft, padRight, padTop, padBottom, text) {
+function createPadLabel(fontId, bgColor, padLeft, padRight, padTop, padBottom, text) {
     //
     const font = allFonts[fontId]
     //
-    const sample = font[text[0]]
+    const symbol = (text == "") ? "." : text[0]
+    const sample = font[symbol]
     //
     const width = padLeft + calcTextLength(fontId, text) + padRight
     //
@@ -1848,7 +3373,7 @@ function createLabel(fontId, bgColor, padLeft, padRight, padTop, padBottom, text
     const cnv = createColorCanvas(width, height, bgColor)
     const ctx = cnv.getContext("2d")
     //
-    displayText(ctx, padLeft, padTop, font, text)
+    displayText(ctx, font, padLeft, padTop, text)
     //
     return cnv
 }
@@ -2002,7 +3527,7 @@ function assureWidgetFitsInPanel(w) { // minimum left & top checked
     //
     const panel = w.panel
     //
-    const txt1 = "-- widget " + w.id + " passes "
+    const txt1 = "-- " + w.kind + " " + w.id + " passes "
     //
     const txt2 = " edge of its panel"
     //
@@ -2025,7 +3550,7 @@ function assureWidgetDoesntClash(w) {
         //
         if (w.top + w.height <= candidate.top) { continue } // candidate is below
         //
-        throw "-- widget " + w.id + " clashes with widget " + candidate.id
+        throw "-- " + w.kind + " " + w.id + " clashes with " + candidate.kind + " " + candidate.id
     }
 }
 
@@ -2043,12 +3568,18 @@ function __createTheLibraryObject() {
         "allImages": allImages,
         "createLoader": createLoader,
         //
+        "setFontsForSpecialLayers": setFontsForSpecialLayers,
+        //
+        "loadImage": loadImage,
+        "saveImage": saveImage,
+        //
         "cloneImage": cloneImageUser,
         "createCanvas": createColorCanvasUser,
         "fadeImage": fadeImageUser,
         "createCheckerboard": createCheckerboardUser,
         "negativeFromImage": negativeFromImageUser,
         "createLabel": createLabelUser,
+        "createPadLabel": createPadLabelUser,
         "calcTextLength": calcTextLengthUser,
         //
         "createBox": createBox
