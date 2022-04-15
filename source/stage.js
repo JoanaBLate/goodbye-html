@@ -27,8 +27,6 @@ function createStage(box) {
 
 function setStageBgColor(box, color) {
     //
-    if (color === null) { color = "transparent" }
-    //
     assureColor("color", "box.setBgColor", color)
     //
     box.stage.style.backgroundColor = color
