@@ -9,7 +9,7 @@ function createLoader() {
     const loader = {
         //
         "loadFont": loadFont,
-        "loadImage": loadImage,
+        "loadImage": loaderLoadImage,
         "ready": setLoaderCallback
     }
     //
@@ -21,6 +21,7 @@ function createLoader() {
 function setLoaderCallback(callback) {
     //
     if (typeof callback != "function") {
+        //
         throw "-- wrong argument callback for function loader.ready, got: " + callback
     }
     //
@@ -36,7 +37,7 @@ function loaderDone(callback) {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-function loadImage(id, src) {
+function loaderLoadImage(id, src) {
     //
     assureFreeId("id", "loader.loadImage", id, allImages)
     //

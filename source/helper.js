@@ -4,6 +4,15 @@
 
 ///////////////////////////////////////////////////////////////////////////////
 
+function clickHtmlElement(element) { 
+    // Firefox (and Edge) does not click link that is not body's child
+    const e = document.createEvent("MouseEvents")
+    e.initEvent("click", true, true) // event type, can bubble?,  cancelable?
+    element.dispatchEvent(e) 
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
 function createCanvas(width, height) {
     //
     const cnv = document.createElement("canvas")
@@ -96,13 +105,7 @@ function isSolidColor(color) {
 
 function solidReversedColor(color) {
     //
-    const cnv = createCanvas(1, 1)
-    const ctx = cnv.getContext("2d")
-    //
-    ctx.fillStyle = color
-    ctx.fillRect(0, 0, 1, 1)
-    //
-    const data = ctx.getImageData(0, 0, 1, 1).data
+    const data = rgbFromColor(color)
     //
     const r = 255 - data[0]
     const g = 255 - data[1]
@@ -111,3 +114,41 @@ function solidReversedColor(color) {
     return "rgb(" + r + "," + g + "," + b + ")"
 }
 
+function rgbFromColor(color) {
+    //
+    const cnv = createCanvas(1, 1)
+    const ctx = cnv.getContext("2d")
+    //
+    ctx.fillStyle = color
+    ctx.fillRect(0, 0, 1, 1)
+    //
+    const data = ctx.getImageData(0, 0, 1, 1).data
+    //
+    const r = data[0]
+    const g = data[1]
+    const b = data[2]
+    //
+    return [r, g, b]
+}
+
+function getGrey(r, g, b) {
+    let grey = Math.round(r * 0.299 + g * 0.587 + b * 0.114)
+    if (grey > 255) { grey = 255 }
+    //
+    return grey
+}
+
+function getGreyFromString(color) {
+    //
+    const rgb = rgbFromColor(color) 
+    //
+    return getGrey(rgb[0], rgb[1], rgb[2])
+}
+
+function fadeColor(color, alpha) {
+    //
+    const rgb = rgbFromColor(color)
+    //
+    return "rgba(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + "," + alpha + ")"
+}
+    

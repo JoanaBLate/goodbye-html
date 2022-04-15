@@ -8,7 +8,7 @@ function assureWidgetFitsInPanel(w) { // minimum left & top checked
     //
     const panel = w.panel
     //
-    const txt1 = "-- widget " + w.id + " passes "
+    const txt1 = "-- " + w.kind + " " + w.id + " passes "
     //
     const txt2 = " edge of its panel"
     //
@@ -31,7 +31,7 @@ function assureWidgetDoesntClash(w) {
         //
         if (w.top + w.height <= candidate.top) { continue } // candidate is below
         //
-        throw "-- widget " + w.id + " clashes with widget " + candidate.id
+        throw "-- " + w.kind + " " + w.id + " clashes with " + candidate.kind + " " + candidate.id
     }
 }
 

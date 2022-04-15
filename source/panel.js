@@ -2,6 +2,13 @@
 // MIT License
 "use strict"
 
+/*
+ *
+ *   bgColor of panel is NOT painted on it, it is painted direclty on stage;
+ *   changing the bgColor of the panel has NO effet onwhat is painted on it
+ *
+ */
+
 ///////////////////////////////////////////////////////////////////////////////
 
 function Panel(layer, id, left, top, width, height, bgColor) {
@@ -15,16 +22,16 @@ function Panel(layer, id, left, top, width, height, bgColor) {
     this.width = width
     this.height = height
     //
+    this.fontId = null
+    //
+    this.widgets = [ ]
+    //
     this.visible = true
     //
     this.bgColor = bgColor
     //
     this.canvas = createCanvas(width, height)
     this.context = this.canvas.getContext("2d")
-    //
-    this.fontId = null
-    //
-    this.widgets = [ ]
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -51,8 +58,6 @@ function createPanel(layer, name, left, top, width, height, bgColor) {
     //
     assureMinimumInteger("height", func, height, 1) 
     //
-    if (bgColor === null) { bgColor = "transparent" }
-    //
     assureColor("bgColor", func, bgColor)
     //
     const panel = new Panel(layer, id, left, top, width, height, bgColor)
@@ -75,8 +80,10 @@ function createPanelUserObj(panel) {
     //
     const obj = { }
     //
-    obj["hide"] = function () { hidePanel(panel) }
-    obj["show"] = function () { showPanel(panel) }
+    obj["hide"] = function () { panel.visible = false; panel.layer.box.shallRepaint = true }
+    obj["show"] = function () { panel.visible = true; panel.layer.box.shallRepaint = true }
+    //
+    obj["getVisible"] = function () { return panel.visible }
     //
     obj["write"] = function (left, top, txt) { return writeOnPanel(panel, left, top, txt) }
     //
@@ -92,7 +99,7 @@ function createPanelUserObj(panel) {
         paintRectOnPanel(panel, left, top, width, height, color) 
     }
     //
-    obj["paintImage"] = function (left, top, img) { paintImageOnPanel(panel, left, top, img) }
+    obj["paintImage"] = function (img, left, top) { paintImageOnPanel(panel, img, left, top) }
     //
     obj["setBgColor"] = function (color) { setPanelBgColor(panel, color) }
     //
@@ -104,9 +111,22 @@ function createPanelUserObj(panel) {
     obj["createSurface"] = function (name, left, top, width, height, bgColor) { 
         //
         return createSurface(panel, name, left, top, width, height, bgColor) 
+    }       
+    //
+    obj["createSlider"] = function (name, left, top, width, height, bgColor, dark) { 
+        //
+        return createSlider(panel, name, left, top, width, height, bgColor, dark) 
+    }       
+    //
+    obj["createCheckbox"] = function (name, left, top, dimension, checked, onclick) { 
+        //
+        return createCheckbox(panel, name, left, top, dimension, checked, onclick) 
+    }      
+    //
+    obj["createTextbox"] = function (name, left, top, width, height, length, fontId, isRightStart) { 
+        //
+        return createTextbox(panel, name, left, top, width, height, length, fontId, isRightStart) 
     }
-    //    
-    obj["visible"] = function () { return panel.visible }
     //
     obj["log"] = function () { console.log(panel) }
     //
@@ -149,21 +169,21 @@ function setPanelBgColor(panel, color) {
     //
     panel.bgColor = color
     //
+    resetAndRepaintSomePanelWidgets(panel)
+    //
     panel.layer.box.shallRepaint = true
 }
 
-///////////////////////////////////////////////////////////////////////////////
-
-function hidePanel(panel) {
+function resetAndRepaintSomePanelWidgets(panel) {
     //
-    panel.visible = false
-    panel.layer.box.shallRepaint = true
-}
-
-function showPanel(panel) {
-    //
-    panel.visible = true
-    panel.layer.box.shallRepaint = true
+    for (const widget of panel.widgets) {
+        //
+        if (widget.kind == "slider") { setSliderImages(widget); continue }   
+        //
+        if (widget.kind == "textbox") { paintTextbox(widget); continue }   
+        //
+        if (widget.kind == "checkbox") { setCheckboxImages(widget); continue } 
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -201,19 +221,12 @@ function assurePanelDoesntClash(panel) {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-function paintPanelUnderWidget(widget, color) {
+function clearPanelUnderWidget(widget) {
     //
     const panel = widget.panel
     //
     panel.layer.box.shallRepaint = true
     // 
     panel.context.clearRect(widget.left, widget.top, widget.width, widget.height)
-    //
-    if (color) {
-        // 
-        panel.context.fillStyle = color
-        //
-        panel.context.fillRect(widget.left, widget.top, widget.width, widget.height)
-    }
 }
 

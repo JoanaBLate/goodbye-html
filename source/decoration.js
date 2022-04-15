@@ -4,17 +4,17 @@
 
 ///////////////////////////////////////////////////////////////////////////////
 
-function paintImageOnPanel(panel, left, top, img) {
+function paintImageOnPanel(panel, img, left, top) {
     //
     panel.layer.box.shallRepaint = true
     //
     const func = "panel.paintImage"
     //
+    assureImage("img", func, img) 
+    //
     assureInteger("left", func, left)
     //
     assureInteger("top", func, top)
-    //
-    assureImage("img", func, img) 
     //
     panel.context.drawImage(img, left, top)
 }
@@ -84,10 +84,10 @@ function writeOnPanel(panel, left, top, text) {
     // 
     const font = allFonts[panel.fontId]
     //
-    return displayText(panel.context, left, top, font, text)
+    return displayText(panel.context, font, left, top, text)
 }
 
-function displayText(ctx, left, top, font, text) {
+function displayText(ctx, font, left, top, text) {
     //
     for (const character of text) {
         //

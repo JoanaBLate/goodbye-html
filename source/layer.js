@@ -40,7 +40,11 @@ function createLayerUserObj(box, layer) {
     //
     obj["hide"] = function () { layer.visible = false; box.shallRepaint = true }
     //
-    obj["visible"] = function () { return layer.visible }
+    obj["moveUp"] = function () { moveLayer(box, layer, +1) }
+    //
+    obj["moveDown"] = function () { moveLayer(box, layer, -1) }
+    //
+    obj["getVisible"] = function () { return layer.visible }
     //
     obj["createPanel"] = function (name, left, top, width, height, bgColor) { 
         //
@@ -52,7 +56,6 @@ function createLayerUserObj(box, layer) {
     Object.freeze(obj)
     return obj
 }
-
 
 /////////////////////////////////////////////////////////////////////////////////
 
@@ -75,5 +78,35 @@ function initLayers(box, names) {
         //
         createLayer(box, name) 
     }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+function orderOfLayers(box) {
+    //
+    const order = [ ]
+    //
+    for (const layer of box.layers) { order.push(layer.id) }
+    //
+    return order    
+}
+
+/////////////////////////////////////////////////////////////////////////////////
+
+function moveLayer(box, layer, delta) {
+    //
+    box.shallRepaint = true
+    //
+    const index = box.layers.indexOf(layer)
+    //
+    const newIndex = index + delta
+    //
+    if (newIndex < 0  ||  newIndex >= box.layers.length) { return }
+    //
+    const a = layer
+    const b = box.layers[newIndex]
+    //
+    box.layers[index] = b
+    box.layers[newIndex] = a
 }
 

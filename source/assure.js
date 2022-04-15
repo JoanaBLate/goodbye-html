@@ -15,6 +15,28 @@ function argError(param, func, txt) {
 
 ///////////////////////////////////////////////////////////////////////////////
 
+function assureBoolean(param, func, val) {
+    //
+    if (val === true  ||  val === false) { return }
+    //
+    argError(param, func, "expecting boolean, got: " + val) 
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+function __assureNumber(param, func, val) {
+    //
+    const msg = "expecting number, got: " + val
+    //
+    if (isNaN(val)) { argError(param, func, msg) }
+    //
+    if (typeof(val) == "string") { argError(param, func, msg.replace("got:", "got string:")) }
+    //
+    if (typeof(val) != "number") { argError(param, func, msg) }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
 function assureInteger(param, func, val) {
     //
     const msg = "expecting integer, got: " + val
@@ -26,6 +48,23 @@ function assureInteger(param, func, val) {
     if (typeof(val) != "number") { argError(param, func, msg) }
     //
     if (Math.floor(val) !== val) { argError(param, func, msg) }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+function assureThisInteger(param, func, val, ref) {
+    //
+    const msg = "expecting integer == " + ref + ", got: " + val
+    //
+    if (isNaN(val)) { argError(param, func, msg) }
+    //
+    if (typeof(val) == "string") { argError(param, func, msg.replace("got:", "got string:")) }
+    //
+    if (typeof(val) != "number") { argError(param, func, msg) }
+    //
+    if (Math.floor(val) !== val) { argError(param, func, msg) }
+    //
+    if (val != ref) { argError(param, func, msg) }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -96,7 +135,7 @@ function assureNullOrFunction(param, func, val) {
     if (val === null) { return }
     if (typeof val == "function") { return }
     //
-    argError(param, func, "expecting function, got: " + val)
+    argError(param, func, "expecting null or function, got: " + val)
 }
 
 ///////////////////////////////////////////////////////////////////////////////

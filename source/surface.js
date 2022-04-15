@@ -55,8 +55,6 @@ function createSurface(panel, name, left, top, width, height, bgColor) {
     //
     assureMinimumInteger("height", func, height, 1) 
     //
-    if (bgColor === null) { bgColor = "transparent" }
-    //
     assureColor("bgColor", func, bgColor)
     //
     const surface = new Surface(panel, id, left, top, width, height, bgColor)
@@ -81,8 +79,10 @@ function createSurfaceUserObj(surface) {
     //
     const obj = { }
     //
-    obj["hide"] = function () { hideSurface(surface) }
-    obj["show"] = function () { showSurface(surface) }
+    obj["hide"] = function () { surface.visible = false; paintSurface(surface) }
+    obj["show"] = function () { surface.visible = true; paintSurface(surface) }
+    //
+    obj["getVisible"] = function () { return surface.visible }
     //
     obj["setImage"] = function (img) { setSurfaceImage(surface, img) }
     //
@@ -94,8 +94,6 @@ function createSurfaceUserObj(surface) {
     obj["setOnMouseEnter"] = function (h) { setSurfaceOnMouseEnter(surface, h) }
     obj["setOnMouseLeave"] = function (h) { setSurfaceOnMouseLeave(surface, h) }
     //
-    obj["visible"] = function () { return surface.visible }
-    //
     obj["log"] = function () { console.log(surface) }
     //
     Object.freeze(obj)
@@ -106,9 +104,9 @@ function createSurfaceUserObj(surface) {
 
 function paintSurface(surface) {
     //
-    if (! surface.visible) { paintPanelUnderWidget(surface, null); return }
+    clearPanelUnderWidget(surface)
     //
-    paintPanelUnderWidget(surface, surface.bgColor)
+    if (! surface.visible) { return }
     //
     surface.panel.context.drawImage(surface.canvas, surface.left, surface.top)
 }
@@ -117,26 +115,10 @@ function paintSurface(surface) {
 
 function setSurfaceBgColor(surface, color) { 
     //
-    if (color === null) { color = "transparent" }
-    //
     assureColor("color", "surface.setBgColor", color)
     //
     surface.bgColor = color
     //
-    paintSurface(surface)
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
-function hideSurface(surface) {
-    //
-    surface.visible = false
-    paintSurface(surface)
-}
-
-function showSurface(surface) {
-    //
-    surface.visible = true
     paintSurface(surface)
 }
 

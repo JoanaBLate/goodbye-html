@@ -4,9 +4,49 @@
 
 ///////////////////////////////////////////////////////////////////////////////
 
-function createLabelUser(fontId, bgColor, padLeft, padRight, padTop, padBottom, text) {
+function createLabelUser(fontId, bgColor, width, height, text) {
     //
     const func = "library.createLabel"
+    //
+    assureGoodId("fontId", func, fontId, allFonts)
+    //
+    assureColor("bgColor", func, bgColor) 
+    //    
+    assureMinimumInteger("width", func, width, 3)
+    //    
+    assureMinimumInteger("height", func, height, 3)
+    //
+    assureString("text", func, text)
+    //
+    return createLabel(fontId, bgColor, width, height, text)
+}
+
+function createLabel(fontId, bgColor, width, height, text) {
+    //
+    const font = allFonts[fontId]
+    //
+    const symbol = (text == "") ? "." : text[0]
+    const sample = font[symbol]
+    //
+    const cnv = createColorCanvas(width, height, bgColor)
+    const ctx = cnv.getContext("2d")
+    //
+    const restH = width - calcTextLength(fontId, text)
+    const left = Math.floor(restH / 2)
+    //
+    const restV = height - (sample.height)
+    const top = 2 + Math.floor(restV / 2)
+    //
+    displayText(ctx, font, left, top, text)
+    //
+    return cnv
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+function createPadLabelUser(fontId, bgColor, padLeft, padRight, padTop, padBottom, text) {
+    //
+    const func = "library.createPadLabel"
     //
     assureGoodId("fontId", func, fontId, allFonts)
     //
@@ -20,16 +60,17 @@ function createLabelUser(fontId, bgColor, padLeft, padRight, padTop, padBottom, 
     //    
     assureMinimumInteger("padBottom", func, padBottom, 0)
     //
-    assureNonEmptyString("text", func, text)
+    assureString("text", func, text)
     //
-    return createLabel(fontId, bgColor, padLeft, padRight, padTop, padBottom, text)
+    return createPadLabel(fontId, bgColor, padLeft, padRight, padTop, padBottom, text)
 }
 
-function createLabel(fontId, bgColor, padLeft, padRight, padTop, padBottom, text) {
+function createPadLabel(fontId, bgColor, padLeft, padRight, padTop, padBottom, text) {
     //
     const font = allFonts[fontId]
     //
-    const sample = font[text[0]]
+    const symbol = (text == "") ? "." : text[0]
+    const sample = font[symbol]
     //
     const width = padLeft + calcTextLength(fontId, text) + padRight
     //
@@ -38,7 +79,7 @@ function createLabel(fontId, bgColor, padLeft, padRight, padTop, padBottom, text
     const cnv = createColorCanvas(width, height, bgColor)
     const ctx = cnv.getContext("2d")
     //
-    displayText(ctx, padLeft, padTop, font, text)
+    displayText(ctx, font, padLeft, padTop, text)
     //
     return cnv
 }

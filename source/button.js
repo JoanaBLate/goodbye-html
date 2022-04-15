@@ -17,20 +17,21 @@ function Button(panel, id, left, top, width, height, bgColor) {
     this.width = width
     this.height = height
     //
+    this.text = null
+    this.fontId = null
+    //
     this.visible = true
     //
     this.bgColor = bgColor
     //
-    this.text = null
-    this.fontId = null
+    this.pressed = false
+    this.disabled = false
+    this.active = false
     //
     this.imageNormal = createColorCanvas(width, height, bgColor)
     this.imageActive = createColorCanvas(width, height, bgColor)
     this.imagePressed = createColorCanvas(width, height, solidReversedColor(bgColor))
     this.imageDisabled = createColorCanvas(width, height, bgColor)
-    //
-    this.pressed = false
-    this.state = "normal" // active, disabled
     //
     this.onmouseup = function () { buttonOnMouseUp(this) }
     this.onmousedown = function () { buttonOnMouseDown(this) }
@@ -62,9 +63,7 @@ function createButton(panel, name, left, top, width, height, bgColor) {
     //
     assureMinimumInteger("height", func, height, 1) 
     //
-    if (bgColor === null) { bgColor = "transparent" }
-    //
-    assureColor("bgColor", func, bgColor)
+    assureSolidColor("bgColor", func, bgColor)
     //
     const button = new Button(panel, id, left, top, width, height, bgColor) 
     //
@@ -88,25 +87,33 @@ function createButtonUserObj(button) {
     //
     const obj = { }
     //
-    obj["hide"] = function () { hideButton(button) }
-    obj["show"] = function () { showButton(button) }
+    obj["hide"] = function () { button.visible = false; paintButton(button) }
+    obj["show"] = function () {button.visible = true; paintButton(button) }
+    //
+    obj["getVisible"] = function () { return button.visible }
     //
     obj["setImageNormal"] = function (img) { setButtonImageNormal(button, img) } 
     obj["setImageActive"] = function (img) { setButtonImageActive(button, img) } 
     obj["setImagePressed"] = function (img) { setButtonImagePressed(button, img) } 
     obj["setImageDisabled"] = function (img) { setButtonImageDisabled(button, img) } 
     //
-    obj["disable"] = function () { button.state = "disabled"; paintButton(button); button.pressed = false }
-    obj["activate"] = function () { button.state = "active"; paintButton(button);  button.pressed = false }
-    obj["normalize"] = function () { button.state = "normal"; paintButton(button); button.pressed = false }
+    obj["enable"] = function () { button.disabled = false; button.pressed = false; paintButton(button) }
+    obj["disable"] = function () { button.disabled = true; button.pressed = false; paintButton(button) }
+    //
+    obj["getDisabled"] = function () { return button.disabled }
+    //
+    obj["activate"] = function () { button.disabled = false; button.pressed = false; button.active = true; paintButton(button) }
+    obj["deactivate"] = function () { button.disabled = false; button.pressed = false; button.active = false; paintButton(button) }
+    //
+    obj["getActive"] = function () { return button.active }
     //
     obj["setBgColor"] = function (color) { setButtonBgColor(button, color) }
     //
+    obj["setText"] = function (fontId, text) { setButtonText(button, fontId, text) }
+    //
     obj["setOnClick"] = function (handler) { setButtonOnClick(button, handler) }
     //
-    obj["setButtonText"] = function (fontId, text) { setButtonText(button, fontId, text) }
-    //
-    obj["visible"] = function () { return button.visible }
+    obj["config"] = function (fontId, text, onclick) { configButton(button, fontId, text, onclick) }
     //
     obj["log"] = function () { console.log(button) }
     //
@@ -118,9 +125,9 @@ function createButtonUserObj(button) {
 
 function paintButton(button) {
     //
-    if (! button.visible) { paintPanelUnderWidget(button, null); return }
+    clearPanelUnderWidget(button)
     //
-    paintPanelUnderWidget(button, button.bgColor)
+    if (! button.visible) { return }
     //
     const img = getButtonImage(button)
     //
@@ -131,26 +138,10 @@ function paintButton(button) {
 
 function setButtonBgColor(button, color) { 
     //
-    if (color === null) { color = "transparent" }
-    //
-    assureColor("color", "button.setBgColor", color)
+    assureSolidColor("color", "button.setBgColor", color)
     //
     button.bgColor = color
     //
-    paintButton(button)
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
-function hideButton(button) {
-    //
-    button.visible = false
-    paintButton(button)
-}
-
-function showButton(button) {
-    //
-    button.visible = true
     paintButton(button)
 }
 
@@ -160,9 +151,11 @@ function getButtonImage(button) {
     //
     if (button.pressed) { return button.imagePressed }
     //
-    if (button.state == "normal") { return button.imageNormal }
-    if (button.state == "active") { return button.imageActive }
-    if (button.state == "disabled") { return button.imageDisabled }
+    if (button.disabled) { return button.imageDisabled }
+    //
+    if (button.active) { return button.imageActive }
+    //
+    return button.imageNormal 
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -216,7 +209,7 @@ function setButtonOnClick(button, handler) {
 
 function buttonOnMouseDown(button) {
     //
-    if (button.state == "disabled") { return }
+    if (button.disabled) { return }
     //
     button.pressed = true
     paintButton(button)

@@ -50,7 +50,7 @@ function stageOnMouseMove(box, e) {
     box.lastWidgetUnderMouse = widget
     //
     //
-    if (dragging  &&  widget != last) { box.focusedWidget = null }
+    if (dragging  &&  widget != last) { resetFocus(box) }
     //
     //
     if (widget == null  &&  last == null) { return }
@@ -93,8 +93,11 @@ function stageOnMouseDown(box, e) {
     const widget = findWidgetUnderMouse(panel, x, y)
     //
     box.lastWidgetUnderMouse = widget 
-    //    
-    box.focusedWidget = widget
+    // 
+    if (widget != box.focusedWidget) { // avoiding resetting cursor position in textbox
+        resetFocus(box)
+        setFocus(box, widget)
+    }
     //
     if (widget == null) { return }
     //

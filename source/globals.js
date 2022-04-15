@@ -8,3 +8,6 @@ const allFonts = { }
 
 let resourcesToLoad = 0
 
+let fileSelector = null
+let downloadLink = null
+

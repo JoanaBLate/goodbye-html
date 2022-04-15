@@ -11,6 +11,11 @@ function __createTheLibraryObject() {
         "allFonts": allFonts,
         "allImages": allImages,
         "createLoader": createLoader,
+        //
+        "setFontsForSpecialLayers": setFontsForSpecialLayers,
+        //
+        "loadImage": loadImage,
+        "saveImage": saveImage,
         //        
         "cloneImage": cloneImageUser,
         "createCanvas": createColorCanvasUser,
@@ -18,6 +23,7 @@ function __createTheLibraryObject() {
         "createCheckerboard": createCheckerboardUser,
         "negativeFromImage": negativeFromImageUser,
         "createLabel": createLabelUser,
+        "createPadLabel": createPadLabelUser,
         "calcTextLength": calcTextLengthUser,
         //
         "createBox": createBox

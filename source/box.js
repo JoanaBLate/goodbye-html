@@ -8,9 +8,11 @@ function mainLoop(box) {
     //
     box.loop += 1
     //
+    updateBlinking(box)
+    //
     if (box.shallRepaint) { paintStage(box); box.shallRepaint = false }
     //
-    setTimeout(function () { mainLoop(box) }, 33)
+    setTimeout(function () { mainLoop(box) }, 16)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -33,6 +35,9 @@ function Box(width, height, parent) {
     this.focusedWidget = null
     this.lastWidgetUnderMouse = null 
     //
+    this.blinking = false // means the red phase of blinking
+    this.blinkingClock = 0
+    //
     this.loop = 0
     this.shallRepaint = true
 }
@@ -52,6 +57,9 @@ function createBox(width, height, parent) {
     //
     createStage(box)
     //
+    box.stage.tabIndex = "-1"
+    box.stage.onkeydown = function (e) { keyDownHandler(box, e) }
+    //
     return createBoxUser(box)
 }
 
@@ -65,7 +73,11 @@ function createBoxUser(box) {
     //
     boxUser["initLayers"] = function (names) { initLayers(box, names) }
     //
+    boxUser["getOrderOfLayers"] = function () { return orderOfLayers(box) }
+    //
     boxUser["get"] = function (id) { return getUser(box, id) }
+    //
+    boxUser["resetFocus"] = function () { resetFocus(box) }
     //
     boxUser["log"] = function () { console.log(box) }
     //
@@ -85,5 +97,61 @@ function getUser(box, id) {
     if (element == undefined) { throw "no element matches this id: " + id }
     //
     return element
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+function setFocus(box, widget) {
+    //
+    if (widget == null) { box.focusedWidget = null; return }
+    //
+    if (widget.kind == "textbox") { box.focusedWidget = widget }
+}
+
+function resetFocus(box) {
+    //
+    box.blinking = false
+    //
+    const widget = box.focusedWidget
+    //
+    box.focusedWidget = null 
+    //
+    if (widget == null) { return }
+    //
+    if (widget.kind == "textbox") { paintTextbox(widget) }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+function startBlinking(widget) { // must be the box.focusedWidget
+    //
+    const box = widget.panel.layer.box
+    //
+    box.blinking = true
+    //
+    box.blinkingClock = box.loop + blinkingDuration(box.blinking)
+    //
+    paintTextbox(widget)
+}
+
+function updateBlinking(box) {
+    //
+    if (box.blinkingClock != box.loop) { return }
+    //
+    const widget = box.focusedWidget
+    //
+    if (widget == null) { return }
+    //
+    if (widget.kind != "textbox") { return }
+    //
+    box.blinking = ! box.blinking
+    box.blinkingClock = box.loop + blinkingDuration(box.blinking)
+    //
+    paintTextbox(widget)
+}
+
+function blinkingDuration(blinking) {
+    //
+    return blinking ? 40 : 30
 }
 
