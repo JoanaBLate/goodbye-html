@@ -15,7 +15,7 @@ The library is very careful about avoiding developer mistakes and about clearly 
 
 Warning: the source code must be packaged.
 
-Here you can experiment a demo https://bobsprite.com/mosaic-generator-demo
+Here you can experiment a demo https://bobsprite.com/mosaic-demo
 
 Here is the demo in GitHub: https://github.com/JoanaBLate/mosaic-generator
 
