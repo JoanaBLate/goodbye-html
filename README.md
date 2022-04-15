@@ -13,12 +13,11 @@ This system has good performance and consumes little memory.
 The library is very careful about avoiding developer mistakes and about clearly messaging the mistakes.
 
 
-Warning: the library is still under construction.
+Warning: the source code must be packaged.
 
-Warning2: the source code must be packaged.
+Here you can experiment a demo https://bobsprite.com/mosaic-generator-demo
 
-Here you can experiment a partial demo https://bobsprite.com/mosaic-partial-demo
-
+Here is the demo in GitHub: https://github.com/JoanaBLate/mosaic-generator
 
 More info at https://javascript.plainenglish.io/goodbye-html-hello-canvas-part-1-92f750961666
 
