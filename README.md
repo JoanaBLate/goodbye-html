@@ -12,9 +12,11 @@ This system has good performance and consumes little memory.
 
 The library is very careful about avoiding developer mistakes and about clearly messaging the mistakes.
 
+>>> All you need is the file *goodbye.js* (everything else here exists to create this file).
+
 
 WARNINGS: 
-- the source code must be packaged
+- run packager.js with Deno to package the source code
 - running packager.js CLEARS your terminal (you may comment the line that clears your terminal)
 - running packager.js WRITES in your disk
 
