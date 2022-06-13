@@ -13,7 +13,10 @@ This system has good performance and consumes little memory.
 The library is very careful about avoiding developer mistakes and about clearly messaging the mistakes.
 
 
-Warning: the source code must be packaged.
+WARNINGS: 
+- the source code must be packaged
+- running packager.js CLEARS your terminal (you may comment the line that clears your terminal)
+- running packager.js WRITES in your disk
 
 Here you can experiment a demo: https://bobsprite.com/mosaic-demo
 
