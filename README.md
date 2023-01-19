@@ -20,7 +20,7 @@ WARNINGS:
 - running packager.js CLEARS your terminal (you may comment the line that clears your terminal)
 - running packager.js WRITES in your disk
 
-Here you can experiment a demo: https://bobsprite.com/mosaic-demo
+Here you can experiment a demo: https://storage.googleapis.com/jblate/medium/mosaic-demo.html
 
 Here is the demo in GitHub: https://github.com/JoanaBLate/mosaic-generator
 
